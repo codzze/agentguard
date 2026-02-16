@@ -1,0 +1,47 @@
+{
+  "name": "agentguard",
+  "version": "1.0.0",
+  "description": "Human-as-a-Service (HaaS) governance framework for AI Agents — Decentralized human-in-the-loop validation via MCP, LibP2P, and pluggable identity providers.",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "packages/haas-core",
+    "packages/haas-dashboard",
+    "packages/shared-proto"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/agentguard.git"
+  },
+  "keywords": [
+    "haas",
+    "human-in-the-loop",
+    "ai-governance",
+    "mcp",
+    "model-context-protocol",
+    "libp2p",
+    "agent",
+    "multi-sig",
+    "approval",
+    "opentelemetry"
+  ],
+  "license": "MIT",
+  "author": "AgentGuard Contributors"
+}

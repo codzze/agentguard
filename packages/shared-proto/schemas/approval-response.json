@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApprovalResponse",
+  "description": "Response from a human reviewer to an approval request",
+  "type": "object",
+  "required": ["requestId", "decision", "approver", "signature", "timestamp"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the original approval request"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["APPROVED", "REJECTED"],
+      "description": "The human's decision"
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Reason for rejection (required when decision is REJECTED)"
+    },
+    "approver": {
+      "type": "object",
+      "required": ["peerId", "identityHash", "provider"],
+      "properties": {
+        "peerId": {
+          "type": "string",
+          "description": "LibP2P peer ID of the reviewer"
+        },
+        "identityHash": {
+          "type": "string",
+          "description": "SHA-256 hash of the verified credential"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Identity provider used (linkedin, github, oidc, okta, web3, pgp)"
+        },
+        "claims": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "title": { "type": "string" },
+            "org": { "type": "string" },
+            "seniority": { "type": "string" },
+            "skills": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "verifiedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "pool": {
+          "type": "string",
+          "description": "The approver pool this response is from"
+        }
+      }
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the approval payload"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the approval"
+    }
+  }
+}

@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentGuard — Architecture Documentation</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    /* ── Reset & Variables ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #161b22;
+      --surface-alt: #1c2333;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent2: #bc8cff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --orange: #db6d28;
+      --cyan: #79c0ff;
+      --radius: 12px;
+      --max-w: 1200px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ── Hero ──────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1040 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 80px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(88,166,255,.06) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(188,140,255,.06) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    .hero .subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 700px;
+      margin: 0 auto 24px;
+    }
+    .hero .badge-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: .8rem;
+      font-weight: 600;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .badge .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .badge .dot.green { background: var(--green); }
+    .badge .dot.blue  { background: var(--accent); }
+    .badge .dot.purple { background: var(--accent2); }
+    .badge .dot.yellow { background: var(--yellow); }
+
+    /* ── Sidebar + Layout ─────────────────────────────── */
+    .page-layout {
+      display: flex;
+      min-height: calc(100vh - 200px);
+    }
+    .sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar h3 {
+      padding: 0 20px;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+    .sidebar h3:first-child { margin-top: 0; }
+    .sidebar a {
+      display: block;
+      padding: 7px 20px 7px 28px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: .88rem;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    .sidebar a:hover,
+    .sidebar a.active {
+      color: var(--accent);
+      background: rgba(88,166,255,.06);
+      border-left-color: var(--accent);
+    }
+    .main-content {
+      flex: 1;
+      padding: 48px 48px 100px;
+      max-width: calc(var(--max-w) + 96px);
+      overflow-x: hidden;
+    }
+
+    /* ── Sections ──────────────────────────────────────── */
+    section {
+      margin-bottom: 64px;
+      scroll-margin-top: 24px;
+    }
+    h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    h2 .icon { font-size: 1.6rem; }
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 32px 0 12px;
+      color: var(--accent2);
+    }
+    h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: var(--cyan);
+    }
+    p { margin-bottom: 16px; color: var(--text); }
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 28px;
+      max-width: 800px;
+    }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .card-icon.blue   { background: rgba(88,166,255,.15); }
+    .card-icon.purple { background: rgba(188,140,255,.15); }
+    .card-icon.green  { background: rgba(63,185,80,.15); }
+    .card-icon.yellow { background: rgba(210,153,34,.15); }
+    .card-icon.red    { background: rgba(248,81,73,.15); }
+    .card-icon.cyan   { background: rgba(121,192,255,.15); }
+    .card h4 { margin: 0; color: var(--text); font-size: .95rem; }
+    .card p { font-size: .88rem; color: var(--text-muted); margin: 0; }
+    .card ul { padding-left: 18px; margin-top: 8px; }
+    .card li { font-size: .85rem; color: var(--text-muted); margin-bottom: 4px; }
+
+    /* ── Tables ────────────────────────────────────────── */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-bottom: 24px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    th {
+      background: var(--surface-alt);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(88,166,255,.03); }
+
+    /* ── Tier Badges ──────────────────────────────────── */
+    .tier { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 6px; font-size: .78rem; font-weight: 700; }
+    .tier.low      { background: rgba(63,185,80,.12); color: var(--green); }
+    .tier.mid      { background: rgba(210,153,34,.12); color: var(--yellow); }
+    .tier.high     { background: rgba(219,109,40,.12); color: var(--orange); }
+    .tier.critical { background: rgba(248,81,73,.12); color: var(--red); }
+
+    /* ── Code ──────────────────────────────────────────── */
+    code {
+      background: var(--surface-alt);
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: .85em;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      color: var(--cyan);
+    }
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: .82rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .kw  { color: var(--accent2); }
+    .fn  { color: var(--accent); }
+    .str { color: var(--green); }
+    .cmt { color: var(--text-muted); font-style: italic; }
+    .typ { color: var(--cyan); }
+
+    /* ── Mermaid Diagrams ─────────────────────────────── */
+    .diagram-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+    .diagram-container .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .diagram-label {
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    /* ── State Flow ────────────────────────────────────── */
+    .state-flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 16px 0 24px;
+    }
+    .state-node {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: .82rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .state-node.idle     { background: rgba(139,148,158,.12); color: var(--text-muted); }
+    .state-node.pending  { background: rgba(88,166,255,.12); color: var(--accent); }
+    .state-node.waiting  { background: rgba(210,153,34,.12); color: var(--yellow); }
+    .state-node.approved { background: rgba(63,185,80,.12); color: var(--green); }
+    .state-node.rejected { background: rgba(248,81,73,.12); color: var(--red); }
+    .state-node.timeout  { background: rgba(219,109,40,.12); color: var(--orange); }
+    .state-node.escalated{ background: rgba(188,140,255,.12); color: var(--accent2); }
+    .state-arrow {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    /* ── Architecture Diagram (SVG) ───────────────────── */
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+    .arch-diagram svg text { font-family: 'Segoe UI', sans-serif; }
+
+    /* ── Flow Steps ───────────────────────────────────── */
+    .flow-steps {
+      position: relative;
+      padding-left: 32px;
+      margin: 24px 0;
+    }
+    .flow-steps::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--border);
+    }
+    .flow-step {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .flow-step::before {
+      content: '';
+      position: absolute;
+      left: -25px;
+      top: 8px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+    }
+    .flow-step .step-title {
+      font-weight: 600;
+      font-size: .9rem;
+      color: var(--text);
+    }
+    .flow-step .step-desc {
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Footer ────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: .82rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main-content { padding: 24px; }
+      .hero h1 { font-size: 2rem; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  HERO                                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<header class="hero">
+  <h1>🛡️ AgentGuard</h1>
+  <p class="subtitle">
+    Decentralized Human-in-the-Loop Governance for AI Agents — Complete Architecture Reference
+  </p>
+  <div class="badge-row">
+    <span class="badge"><span class="dot green"></span> MCP Protocol</span>
+    <span class="badge"><span class="dot blue"></span> LibP2P GossipSub</span>
+    <span class="badge"><span class="dot purple"></span> Pluggable Identity</span>
+    <span class="badge"><span class="dot yellow"></span> OpenTelemetry</span>
+  </div>
+</header>
+
+<div class="page-layout">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  SIDEBAR                                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <h3>Overview</h3>
+  <a href="#overview">System Overview</a>
+  <a href="#arch-diagram">Architecture Diagram</a>
+  <a href="#packages">Packages</a>
+  <h3>Components</h3>
+  <a href="#agent-layer">Agent Layer (A2A Mesh)</a>
+  <a href="#governance-core">Governance Core (MCP)</a>
+  <a href="#risk-classifier">Risk Classifier</a>
+  <a href="#state-machine">State Machine</a>
+  <a href="#consensus">Consensus Aggregator</a>
+  <a href="#p2p-network">P2P Network</a>
+  <a href="#identity">Identity Providers</a>
+  <a href="#observability">Observability</a>
+  <h3>Sequence Diagrams</h3>
+  <a href="#seq-standard">Standard Approval (Tier 3)</a>
+  <a href="#seq-rejection">Rejection Flow</a>
+  <a href="#seq-timeout">Timeout &amp; Escalation</a>
+  <a href="#seq-critical">Cross-Pool Critical (Tier 4)</a>
+  <a href="#seq-enterprise">Full Enterprise Flow</a>
+  <h3>Data &amp; Config</h3>
+  <a href="#data-models">Data Models</a>
+  <a href="#risk-policies">Risk Policies</a>
+  <a href="#interaction-matrix">Interaction Matrix</a>
+  <h3>Deployment</h3>
+  <a href="#network-topology">Network Topology</a>
+  <a href="#deployment">Deployment Guide</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  MAIN CONTENT                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<main class="main-content">
+
+<!-- ── 1. OVERVIEW ────────────────────────────────────── -->
+<section id="overview">
+  <h2><span class="icon">🧠</span> System Overview</h2>
+  <p class="section-desc">
+    AgentGuard implements a <strong>decentralized Human-in-the-Loop (HITL) governance</strong> layer
+    for AI Agents. When an agent attempts a high-risk action, AgentGuard <strong>pauses execution</strong> and
+    broadcasts a <strong>Request for Approval (RFA)</strong> to a decentralized network of verified human experts.
+  </p>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon blue">🤖</div>
+        <div><h4>Agent SDK</h4><p>Python <code>@haas_governed</code> decorator</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon purple">⚙️</div>
+        <div><h4>Governance Core</h4><p>TypeScript/Node.js MCP Server</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon green">🌐</div>
+        <div><h4>P2P Network</h4><p>LibP2P GossipSub broadcast</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon yellow">📊</div>
+        <div><h4>Observability</h4><p>OpenTelemetry audit trail</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon cyan">🔐</div>
+        <div><h4>Identity Mesh</h4><p>Pluggable provider system</p></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon red">📋</div>
+        <div><h4>Dashboard</h4><p>React/Vite reviewer UI</p></div>
+      </div>
+    </div>
+  </div>
+  <p>The high-level data flow is:</p>
+  <pre><code>Python Agent → MCP Interceptor → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent</code></pre>
+</section>
+
+<!-- ── ARCHITECTURE DIAGRAM ──────────────────────────── -->
+<section id="arch-diagram">
+  <h2><span class="icon">🏗️</span> Architecture Diagram</h2>
+  <p class="section-desc">High-level component architecture showing all subsystems and their communication protocols.</p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">System Architecture — Component View</div>
+    <div class="mermaid">
+graph TB
+    subgraph AGENTS["🤖 Agent Layer (A2A Mesh)"]
+        direction LR
+        A1["Sales Agent<br/><small>Python</small>"]
+        A2["Finance Agent<br/><small>Python</small>"]
+        A3["Legal Agent<br/><small>Python</small>"]
+        A1 <-->|A2A| A2
+        A2 <-->|A2A| A3
+    end
+
+    subgraph CORE["⚙️ HaaS Governance Core (MCP Server)"]
+        direction TB
+        RC["🎯 Risk Classifier<br/><small>Pattern Matching + AIOps</small>"]
+        SM["🔄 State Machine<br/><small>IDLE → APPROVED/REJECTED</small>"]
+        CA["🤝 Consensus Aggregator<br/><small>Multi-Sig Threshold</small>"]
+        TS["💾 Task Store<br/><small>Redis / In-Memory</small>"]
+        MCP["🔌 MCP Proxy Server<br/><small>Tool Interception</small>"]
+        
+        MCP --> RC
+        RC --> SM
+        SM --> TS
+        SM --> CA
+    end
+
+    subgraph P2P["🌐 P2P Network (LibP2P)"]
+        direction LR
+        GS["📡 GossipSub<br/><small>Topic-based Broadcast</small>"]
+    end
+
+    subgraph POOLS["👥 Human Approver Pools"]
+        direction LR
+        FP["💰 Finance Pool<br/><small>Tier 3-4</small>"]
+        SP["🔒 Security Pool<br/><small>Tier 4</small>"]
+        IP["🖥️ IT Ops Pool<br/><small>Tier 2-3</small>"]
+        LP["⚖️ Legal Pool<br/><small>Tier 4</small>"]
+    end
+
+    subgraph IDENTITY["🔐 Identity Adapter Mesh"]
+        direction LR
+        LI["LinkedIn<br/><small>Verified ID</small>"]
+        GH["GitHub<br/><small>Org Auth</small>"]
+        OIDC["OIDC/SAML<br/><small>Okta / Entra</small>"]
+        W3["Web3<br/><small>Wallet Sig</small>"]
+    end
+
+    subgraph OTEL["📊 Observability"]
+        direction LR
+        TR["OpenTelemetry<br/><small>Traces + Events</small>"]
+        JA["Jaeger / Honeycomb<br/><small>Visualization</small>"]
+        TR --> JA
+    end
+
+    AGENTS -->|"MCP tool_call"| MCP
+    CA -->|"RFA Broadcast"| GS
+    GS -->|"Notify"| POOLS
+    POOLS -->|"Verify"| IDENTITY
+    POOLS -->|"Signed Response"| GS
+    GS -->|"Signatures"| CA
+    SM -->|"Result"| AGENTS
+    CORE -.->|"gRPC Traces"| OTEL
+
+    style AGENTS fill:#0d2137,stroke:#58a6ff,stroke-width:2px,color:#e6edf3
+    style CORE fill:#1a0d37,stroke:#bc8cff,stroke-width:2px,color:#e6edf3
+    style P2P fill:#0d3720,stroke:#3fb950,stroke-width:2px,color:#e6edf3
+    style POOLS fill:#37290d,stroke:#d29922,stroke-width:2px,color:#e6edf3
+    style IDENTITY fill:#0d2f37,stroke:#79c0ff,stroke-width:2px,color:#e6edf3
+    style OTEL fill:#370d0d,stroke:#f85149,stroke-width:2px,color:#e6edf3
+    </div>
+  </div>
+</section>
+
+<!-- ── PACKAGES ───────────────────────────────────────── -->
+<section id="packages">
+  <h2><span class="icon">📦</span> Packages</h2>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Package</th><th>Description</th><th>Language</th><th>Path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>@agentguard/core</code></td><td>Governance interceptor, risk classifier, P2P node, consensus engine</td><td>TypeScript</td><td><code>packages/haas-core</code></td></tr>
+        <tr><td><code>@agentguard/dashboard</code></td><td>Expert reviewer web application</td><td>React/TypeScript</td><td><code>packages/haas-dashboard</code></td></tr>
+        <tr><td><code>agentguard</code> (PyPI)</td><td>Python SDK for AI agent integration</td><td>Python</td><td><code>packages/haas-python-sdk</code></td></tr>
+        <tr><td><code>@agentguard/shared-proto</code></td><td>Shared schemas and protocol definitions</td><td>TypeScript</td><td><code>shared-proto</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── AGENT LAYER ────────────────────────────────────── -->
+<section id="agent-layer">
+  <h2><span class="icon">🤖</span> Agent Layer (A2A Mesh)</h2>
+  <p class="section-desc">
+    The Agent Layer hosts multiple AI agents that collaborate via the A2A protocol. Each agent
+    exposes an <code>AgentCard</code> at <code>/.well-known/agent.json</code> for discovery.
+  </p>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Component</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>@haas_governed</code> decorator</td><td>Wraps Python functions to intercept critical tool calls</td></tr>
+        <tr><td><code>HaaSClient</code></td><td>HTTP/WebSocket client communicating with haas-core</td></tr>
+        <tr><td><code>ContextPreserver</code></td><td>Saves agent memory/stack during approval wait</td></tr>
+        <tr><td><code>ExceptionHandler</code></td><td>Raises <code>HaaSApprovalDenied</code> or <code>HaaSTimeoutError</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h4>Python SDK Usage</h4>
+  <pre><code><span class="kw">from</span> agentguard <span class="kw">import</span> haas
+
+<span class="cmt"># The decorator intercepts the function call and routes it through HaaS governance</span>
+<span class="kw">@haas.governed</span>(tier=<span class="str">"critical"</span>, pool=<span class="str">"finance"</span>)
+<span class="kw">async def</span> <span class="fn">execute_wire_transfer</span>(amount: <span class="typ">float</span>, recipient: <span class="typ">str</span>):
+    <span class="cmt"># This code only runs if a human approves</span>
+    <span class="kw">return</span> banking_api.transfer(amount, recipient)</code></pre>
+</section>
+
+<!-- ── GOVERNANCE CORE ────────────────────────────────── -->
+<section id="governance-core">
+  <h2><span class="icon">⚙️</span> Governance Core (MCP Server)</h2>
+  <p class="section-desc">
+    The central governance engine (TypeScript/Node.js) that intercepts, classifies, and orchestrates
+    human approvals using the Model Context Protocol (MCP).
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon purple">🔌</div>
+        <div><h4>MCP Proxy Server</h4></div>
+      </div>
+      <ul>
+        <li>Wraps standard MCP tool servers</li>
+        <li>Transparent passthrough for Tier 1</li>
+        <li>Interception + pause for Tier 2-4</li>
+        <li>Returns <code>input-required</code> MCP state</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon blue">🔌</div>
+        <div><h4>MCP Interceptor</h4></div>
+      </div>
+      <ul>
+        <li>Intercepts <code>tool_call</code> payloads</li>
+        <li>Routes to Risk Classifier</li>
+        <li>Returns <code>MCPToolResult</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>Core Configuration</h4>
+  <pre><code><span class="kw">import</span> { HaaSCore } <span class="kw">from</span> <span class="str">'@agentguard/core'</span>;
+
+<span class="kw">const</span> core = <span class="kw">new</span> <span class="fn">HaaSCore</span>({
+  policies: <span class="str">'./policies.yaml'</span>,
+  redis: <span class="str">'redis://localhost:6379'</span>,
+  identity: [<span class="str">'linkedin'</span>, <span class="str">'github'</span>, <span class="str">'oidc'</span>],
+  telemetry: { endpoint: <span class="str">'http://otel-collector:4318'</span> }
+});
+
+<span class="kw">await</span> core.<span class="fn">start</span>();</code></pre>
+</section>
+
+<!-- ── RISK CLASSIFIER ────────────────────────────────── -->
+<section id="risk-classifier">
+  <h2><span class="icon">🎯</span> Risk Classifier</h2>
+  <p class="section-desc">
+    Every tool call passes through the Risk Classifier, which determines the approval level required.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Tier</th>
+          <th>Level</th>
+          <th>Approval</th>
+          <th>Threshold</th>
+          <th>Examples</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tier low">TIER 1</span></td>
+          <td>Low</td>
+          <td>Auto-approve (logged)</td>
+          <td>0 signatures</td>
+          <td>Read file, query data, generate report</td>
+        </tr>
+        <tr>
+          <td><span class="tier mid">TIER 2</span></td>
+          <td>Mid</td>
+          <td>Single-Sig</td>
+          <td>1 signature / 1 pool</td>
+          <td>Send email, update Jira, modify config</td>
+        </tr>
+        <tr>
+          <td><span class="tier high">TIER 3</span></td>
+          <td>High</td>
+          <td>Multi-Sig</td>
+          <td>2-3 signatures / 1 pool</td>
+          <td>DB write, $1K-$100K transaction, deploy</td>
+        </tr>
+        <tr>
+          <td><span class="tier critical">TIER 4</span></td>
+          <td>Critical</td>
+          <td>Cross-Pool Executive-Sig</td>
+          <td>2-3+ sigs / multiple pools</td>
+          <td>Delete prod, $100K+ transfer, modify keys</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Trust Requirements per Tier</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Tier</th><th>Min Seniority</th><th>Required Verification</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tier low">LOW</span></td><td>None</td><td>None</td></tr>
+        <tr><td><span class="tier mid">MID</span></td><td>Associate</td><td>Verified Workplace</td></tr>
+        <tr><td><span class="tier high">HIGH</span></td><td>Senior</td><td>Workplace + Relevant Skill</td></tr>
+        <tr><td><span class="tier critical">CRITICAL</span></td><td>Director / VP</td><td>Workplace + Skill + Multi-Factor</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>AIOps Feedback Loop</h3>
+  <div class="card">
+    <ul>
+      <li><strong>Auto-tuning:</strong> If Tier 3 approved 100 consecutive times → recommend downgrade to Tier 2</li>
+      <li><strong>Escalation learning:</strong> Frequently rejected tool calls → recommend upgrading risk tier</li>
+      <li><strong>Pattern recognition:</strong> Identifies common patterns and suggests policy optimizations</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── STATE MACHINE ──────────────────────────────────── -->
+<section id="state-machine">
+  <h2><span class="icon">🔄</span> State Machine</h2>
+  <p class="section-desc">
+    The <code>ApprovalStateMachine</code> manages the lifecycle of every approval request, backed by Redis for crash recovery.
+  </p>
+
+  <div class="state-flow">
+    <span class="state-node idle">IDLE</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node pending">PENDING</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node waiting">WAITING_FOR_HUMAN</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node waiting">PARTIAL_APPROVAL</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node approved">APPROVED</span>
+  </div>
+  <div class="state-flow">
+    <span style="width:320px;display:inline-block"></span>
+    <span class="state-node waiting">WAITING_FOR_HUMAN</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node rejected">REJECTED</span>
+  </div>
+  <div class="state-flow">
+    <span style="width:320px;display:inline-block"></span>
+    <span class="state-node waiting">WAITING_FOR_HUMAN</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node timeout">TIMEOUT</span>
+    <span class="state-arrow">→</span>
+    <span class="state-node escalated">ESCALATED</span>
+  </div>
+
+  <div class="diagram-container">
+    <div class="diagram-label">State Machine — Transition Diagram</div>
+    <div class="mermaid">
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> PENDING : tool_call received
+    PENDING --> WAITING_FOR_HUMAN : RFA broadcast
+    WAITING_FOR_HUMAN --> PARTIAL_APPROVAL : Signature received (below threshold)
+    PARTIAL_APPROVAL --> PARTIAL_APPROVAL : Additional signature (still below threshold)
+    PARTIAL_APPROVAL --> APPROVED : Threshold met ✓
+    WAITING_FOR_HUMAN --> APPROVED : Single-sig approved (Tier 2)
+    WAITING_FOR_HUMAN --> REJECTED : Reviewer denies ✗
+    WAITING_FOR_HUMAN --> TIMEOUT : TTL expires ⏱
+    TIMEOUT --> ESCALATED : Escalation policy
+    TIMEOUT --> [*] : Auto-deny policy
+    ESCALATED --> WAITING_FOR_HUMAN : Re-broadcast to backup pool
+    APPROVED --> [*] : Resume agent
+    REJECTED --> [*] : Abort / Plan B
+    </div>
+  </div>
+</section>
+
+<!-- ── CONSENSUS ──────────────────────────────────────── -->
+<section id="consensus">
+  <h2><span class="icon">🤝</span> Consensus Aggregator</h2>
+  <p class="section-desc">
+    Collects and validates cryptographic signatures from human reviewers, enforcing multi-sig thresholds.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon yellow">1️⃣</div>
+        <div><h4>Single-Sig (Tier 2)</h4></div>
+      </div>
+      <p>First qualified human to verify and sign → action approved</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon yellow">2️⃣</div>
+        <div><h4>Multi-Sig (Tier 3)</h4></div>
+      </div>
+      <p>N unique signatures from ONE pool required (e.g., 2 from Finance)</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon red">3️⃣</div>
+        <div><h4>Cross-Pool (Tier 4)</h4></div>
+      </div>
+      <p>N signatures from MULTIPLE pools (e.g., Finance AND Security AND Legal)</p>
+    </div>
+  </div>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Consensus Thresholds by Tier</div>
+    <div class="mermaid">
+graph LR
+    T2["Tier 2<br/>MID"] -->|"1 sig"| P1["Single Pool"]
+    T3["Tier 3<br/>HIGH"] -->|"2-3 sigs"| P2["Single Pool<br/><small>e.g. Finance</small>"]
+    T4["Tier 4<br/>CRITICAL"] -->|"3+ sigs"| P3["Finance Pool"]
+    T4 -->|"3+ sigs"| P4["Security Pool"]
+    T4 -->|"3+ sigs"| P5["Legal Pool"]
+    
+    P1 -->|"✓"| OK1["✅ Approved"]
+    P2 -->|"✓"| OK2["✅ Approved"]
+    P3 & P4 & P5 -->|"Recombine"| OK3["✅ Approved<br/><small>Proof Bundle</small>"]
+
+    style T2 fill:#37290d,stroke:#d29922,color:#e6edf3
+    style T3 fill:#371c0d,stroke:#db6d28,color:#e6edf3
+    style T4 fill:#370d0d,stroke:#f85149,color:#e6edf3
+    style OK1 fill:#0d3720,stroke:#3fb950,color:#e6edf3
+    style OK2 fill:#0d3720,stroke:#3fb950,color:#e6edf3
+    style OK3 fill:#0d3720,stroke:#3fb950,color:#e6edf3
+    </div>
+  </div>
+</section>
+
+<!-- ── P2P NETWORK ────────────────────────────────────── -->
+<section id="p2p-network">
+  <h2><span class="icon">🌐</span> P2P Network (LibP2P)</h2>
+  <p class="section-desc">
+    Decentralized broadcast layer using LibP2P GossipSub for Request for Approval (RFA) distribution.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Pool</th><th>GossipSub Topic</th><th>Tier Access</th><th>Typical Validators</th></tr></thead>
+      <tbody>
+        <tr><td>💰 Finance</td><td><code>haas/finance</code></td><td>3-4</td><td>CFO, Finance Directors</td></tr>
+        <tr><td>🔒 Security</td><td><code>haas/security</code></td><td>4</td><td>CISO, Security Engineers</td></tr>
+        <tr><td>🖥️ IT Operations</td><td><code>haas/itops</code></td><td>2-3</td><td>DevOps, SREs</td></tr>
+        <tr><td>📊 Data</td><td><code>haas/data</code></td><td>2-3</td><td>Data Engineers, DBAs</td></tr>
+        <tr><td>⚖️ Legal</td><td><code>haas/legal</code></td><td>4</td><td>Legal Counsel</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Claim Pattern</h3>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="step-title">1. RFA Broadcast</div>
+      <div class="step-desc">Request for Approval broadcast to relevant GossipSub topic(s)</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-title">2. Notification</div>
+      <div class="step-desc">Multiple humans receive notifications via push, desktop, or Slack</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-title">3. Claim</div>
+      <div class="step-desc">First human to "Claim" the task gets the identity challenge</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-title">4. Lock</div>
+      <div class="step-desc">Once claimed, other humans see "In Progress" — prevents race conditions</div>
+    </div>
+    <div class="flow-step">
+      <div class="step-title">5. Fallback</div>
+      <div class="step-desc">If claimer fails identity check, task is re-released to pool</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── IDENTITY ───────────────────────────────────────── -->
+<section id="identity">
+  <h2><span class="icon">🔐</span> Identity Adapter Mesh</h2>
+  <p class="section-desc">
+    Pluggable identity verification using the Strategy + Factory pattern. Implement <code>IIdentityProvider</code> to add custom providers.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Provider</th><th>Trust Signal</th><th>Use Case</th></tr></thead>
+      <tbody>
+        <tr><td>LinkedIn Verified ID</td><td>Workplace + Seniority + Skills</td><td>Enterprise governance</td></tr>
+        <tr><td>Microsoft Entra ID</td><td>AD Group Membership + MFA</td><td>Corporate environments</td></tr>
+        <tr><td>GitHub</td><td>Org Membership + Contributions</td><td>Open-source projects</td></tr>
+        <tr><td>Okta / OIDC / SAML</td><td>Role-based claims</td><td>SSO-integrated orgs</td></tr>
+        <tr><td>Custom Web3 / Wallet</td><td>Wallet signature + DAO membership</td><td>Decentralized teams</td></tr>
+        <tr><td>PGP / GPG</td><td>Key-based identity</td><td>High-security environments</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Provider Interface</h4>
+  <pre><code><span class="kw">interface</span> <span class="typ">IIdentityProvider</span> {
+  <span class="kw">readonly</span> name: <span class="typ">string</span>;
+  <span class="fn">getChallenge</span>(requirements: <span class="typ">TrustRequirements</span>): <span class="typ">Challenge</span>;
+  <span class="fn">verifyProof</span>(proof: <span class="typ">IdentityProof</span>): <span class="typ">Promise&lt;VerificationResult&gt;</span>;
+  <span class="fn">extractClaims</span>(proof: <span class="typ">IdentityProof</span>): <span class="typ">ExpertClaims</span>;
+}</code></pre>
+</section>
+
+<!-- ── OBSERVABILITY ──────────────────────────────────── -->
+<section id="observability">
+  <h2><span class="icon">📊</span> Observability (OpenTelemetry)</h2>
+  <p class="section-desc">
+    Every governance decision is traced end-to-end using OpenTelemetry, providing an immutable audit trail.
+  </p>
+
+  <pre><code>Trace: <span class="str">"HaaS Governance Flow"</span>
+├── Span: <span class="str">"Agent Tool Call"</span>
+│   ├── Attribute: agent.id = <span class="str">"finance-agent-001"</span>
+│   ├── Attribute: tool.name = <span class="str">"execute_transfer"</span>
+│   └── Attribute: risk.tier = <span class="str">"critical"</span>
+├── Span: <span class="str">"Risk Classification"</span>
+│   └── Attribute: classifier.result = <span class="str">"TIER_4"</span>
+├── Span: <span class="str">"P2P Broadcast"</span>
+│   ├── Attribute: pools = [<span class="str">"finance"</span>, <span class="str">"security"</span>]
+│   └── Attribute: threshold = 2
+├── Span: <span class="str">"Human Validation"</span>
+│   ├── Event: <span class="str">"claim_by_user_alice"</span>
+│   ├── Event: <span class="str">"identity_verified"</span> (provider: linkedin)
+│   └── Event: <span class="str">"signature_submitted"</span> (pool: finance)
+├── Span: <span class="str">"Consensus Check"</span>
+│   ├── Attribute: signatures_collected = 2
+│   └── Attribute: decision = <span class="str">"APPROVED"</span>
+└── Span: <span class="str">"Tool Execution"</span>
+    └── Attribute: haas.wait_time_ms = 45000</code></pre>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Telemetry Span Hierarchy</div>
+    <div class="mermaid">
+graph TD
+    T["🔍 Trace: HaaS Governance"] --> S1["Span: Tool Call<br/><small>agent.id, tool.name</small>"]
+    T --> S2["Span: Risk Classification<br/><small>tier, policy match</small>"]
+    T --> S3["Span: P2P Broadcast<br/><small>pools, threshold</small>"]
+    T --> S4["Span: Human Validation"]
+    T --> S5["Span: Consensus<br/><small>decision, wait_time</small>"]
+    T --> S6["Span: Tool Execution<br/><small>result, duration</small>"]
+    
+    S4 --> E1["Event: claim"]
+    S4 --> E2["Event: identity_verified"]
+    S4 --> E3["Event: signature_submitted"]
+
+    style T fill:#370d0d,stroke:#f85149,color:#e6edf3
+    style S1 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style S2 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style S3 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style S4 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style S5 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style S6 fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  SEQUENCE DIAGRAMS                                     -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- ── SEQ 1: STANDARD APPROVAL ──────────────────────── -->
+<section id="seq-standard">
+  <h2><span class="icon">📐</span> Sequence: Standard Approval Flow (Tier 3)</h2>
+  <p class="section-desc">
+    Multi-sig approval for a high-risk action. Two independent reviewers from the Finance pool must verify their identity and sign.
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Tier 3 — Multi-Sig Approval Sequence</div>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant A as 🤖 Sales Agent<br/>(Python)
+    participant B as 🤖 Finance Agent<br/>(Python)
+    participant RC as 🎯 Risk Classifier
+    participant RA as ⚙️ Request Approval
+    participant TS as 💾 Task Store<br/>(Redis)
+    participant SW as 🔄 Sync Wait
+    participant P2P as 🌐 P2P Network<br/>(LibP2P)
+    participant FP as 💰 Finance Pool
+    participant IdP as 🔐 Identity Provider
+    participant OTel as 📊 OpenTelemetry
+
+    rect rgba(88, 166, 255, 0.05)
+    Note over A,B: A2A Protocol — Agent Collaboration
+    A->>B: Post Task: Request $50K Discount
+    B-->>A: Task State: Submitted (ID: 789)
+    B->>B: Reasoning: Evaluate 25% discount
+    end
+
+    rect rgba(188, 140, 255, 0.05)
+    Note over B,RC: MCP Protocol — Tool Call Interception
+    B->>RC: tool_call: apply_discount(25%)
+    Note over RC: Risk Analysis: amount > $10K → Tier 3
+    RC->>RA: Escalate (Tier 3, threshold: 2)
+    RC->>OTel: Start Trace + Span
+    end
+
+    rect rgba(210, 153, 34, 0.05)
+    Note over RA,TS: State Persistence
+    RA->>TS: Store {id: 789, state: PENDING}
+    RA->>SW: Transition → WAITING_FOR_HUMAN
+    end
+
+    rect rgba(63, 185, 80, 0.05)
+    Note over RA,P2P: P2P Broadcast
+    RA->>P2P: Broadcast RFA {topic: haas/finance}
+    P2P->>FP: Notify Pool
+    end
+
+    rect rgba(121, 192, 255, 0.05)
+    Note over FP,IdP: Reviewer 1 — Claims & Verifies
+    FP->>IdP: Verify Identity (LinkedIn)
+    IdP-->>FP: ✅ Senior Finance Director
+    FP->>P2P: Submit Signature
+    P2P->>RA: Signature 1/2 ✓
+    RA->>OTel: Event: Partial Approval 1/2
+
+    Note over FP,IdP: Reviewer 2 — Claims & Verifies
+    FP->>IdP: Verify Identity (GitHub)
+    IdP-->>FP: ✅ Finance Team Member
+    FP->>P2P: Submit Signature
+    P2P->>RA: Signature 2/2 ✓
+    RA->>OTel: Event: Consensus Reached
+    end
+
+    rect rgba(63, 185, 80, 0.08)
+    Note over RA: ✅ Threshold Met → APPROVED
+    RA->>TS: Update {state: APPROVED}
+    SW->>B: tool_result: SUCCESS
+    B-->>A: Task Complete
+    RA->>OTel: Close Span (OK)
+    end
+    </div>
+  </div>
+</section>
+
+<!-- ── SEQ 2: REJECTION ──────────────────────────────── -->
+<section id="seq-rejection">
+  <h2><span class="icon">🚫</span> Sequence: Rejection Flow</h2>
+  <p class="section-desc">
+    When a human reviewer denies a dangerous action. The agent receives an error and can execute fallback logic (Plan B).
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Rejection — Agent Fallback Pattern</div>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Agent as 🤖 AI Agent<br/>(Python)
+    participant Core as ⚙️ HaaS Interceptor
+    participant P2P as 🌐 P2P Network
+    participant Pool as 👥 Approver Pool
+    participant OTel as 📊 OpenTelemetry
+
+    Agent->>Core: tool_call: delete_prod_database()
+    Core->>OTel: Start Span (Risk: CRITICAL)
+    Core->>P2P: Broadcast RFA
+
+    rect rgba(248, 81, 73, 0.08)
+    Pool-->>Core: ❌ REJECTED (Policy Violation)
+    Core->>OTel: Event: haas.approval.denied
+    Core-->>Agent: tool_result: FAIL {reason}
+    end
+
+    rect rgba(210, 153, 34, 0.08)
+    Note over Agent: Exception Handling
+    Agent->>Agent: Raise HaaSApprovalDenied
+    Agent->>Agent: Execute Plan B<br/>(Create change ticket, retry)
+    end
+
+    Core->>OTel: Close Span (DENIED)
+    Note over Core: AIOps: Increase risk weight
+    </div>
+  </div>
+</section>
+
+<!-- ── SEQ 3: TIMEOUT & ESCALATION ───────────────────── -->
+<section id="seq-timeout">
+  <h2><span class="icon">⏱️</span> Sequence: Timeout &amp; Escalation</h2>
+  <p class="section-desc">
+    When no reviewer responds within the TTL, the system either escalates to a backup pool or auto-denies based on policy.
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Timeout — Escalation vs Auto-Deny</div>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Agent as 🤖 AI Agent<br/>(Python)
+    participant Core as ⚙️ HaaS Interceptor
+    participant P2P as 🌐 P2P Network
+    participant Pool1 as 👥 Primary Pool
+    participant Pool2 as 👥 Backup Pool
+    participant OTel as 📊 OpenTelemetry
+
+    Agent->>Core: tool_call: update_pricing()
+    Core->>P2P: Broadcast RFA (TTL: 5min)
+
+    rect rgba(219, 109, 40, 0.08)
+    Note over Pool1: ⏱️ No response (5 min)...
+    Core->>OTel: Event: haas.approval.timeout
+    end
+
+    alt Escalation Policy
+        rect rgba(63, 185, 80, 0.06)
+        Core->>P2P: Re-broadcast (Backup Pool, TTL: 10min)
+        Pool2-->>Core: ✅ APPROVED
+        Core-->>Agent: tool_result: SUCCESS
+        end
+    else Auto-Deny Policy
+        rect rgba(248, 81, 73, 0.06)
+        Core-->>Agent: tool_result: TIMEOUT
+        Agent->>Agent: Raise HaaSTimeoutError
+        end
+    end
+
+    Core->>OTel: Close Span
+    </div>
+  </div>
+</section>
+
+<!-- ── SEQ 4: CROSS-POOL CRITICAL ────────────────────── -->
+<section id="seq-critical">
+  <h2><span class="icon">🔴</span> Sequence: Cross-Pool Critical (Tier 4)</h2>
+  <p class="section-desc">
+    The most secure approval pattern. Signatures are required from different departmental pools simultaneously, with cryptographic recombination.
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Tier 4 — Cross-Pool Multi-Sig with Parallel Validation</div>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Agents as 🤖 Agent Mesh<br/>(A2A)
+    participant Core as ⚙️ HaaS Core<br/>(MCP)
+    participant P2P as 🌐 P2P Relay<br/>(LibP2P)
+    participant FP as 💰 Finance Pool
+    participant SP as 🔒 Security Pool
+    participant LP as ⚖️ Legal Pool
+    participant IdP as 🔐 Identity Provider
+    participant OTel as 📊 OpenTelemetry
+
+    Agents->>Core: tool_call: transfer_funds($1M)
+    Core->>OTel: Start Span (CRITICAL, Multi-Sig: 3)
+
+    rect rgba(188, 140, 255, 0.05)
+    Note over Core,P2P: Cross-Pool Broadcast
+    par Parallel Broadcast
+        Core->>P2P: → haas/finance
+        Core->>P2P: → haas/security
+        Core->>P2P: → haas/legal
+    end
+    end
+
+    rect rgba(121, 192, 255, 0.05)
+    Note over FP,LP: Parallel Expert Validation
+    par Finance Verification
+        FP->>IdP: Verify (LinkedIn: CFO)
+        IdP-->>FP: ✅ Verified VC
+        FP->>P2P: Signature Fragment A
+        P2P->>Core: Fragment A ✓ (1/3)
+        Core->>OTel: Event: Approval 1/3
+    and Security Verification
+        SP->>IdP: Verify (Entra: CISO)
+        IdP-->>SP: ✅ Verified Token
+        SP->>P2P: Signature Fragment B
+        P2P->>Core: Fragment B ✓ (2/3)
+        Core->>OTel: Event: Approval 2/3
+    and Legal Verification
+        LP->>IdP: Verify (Okta: Legal Counsel)
+        IdP-->>LP: ✅ Verified Assertion
+        LP->>P2P: Signature Fragment C
+        P2P->>Core: Fragment C ✓ (3/3)
+        Core->>OTel: Event: Consensus 3/3
+    end
+    end
+
+    rect rgba(63, 185, 80, 0.08)
+    Note over Core: 🔐 Cryptographic Recombination
+    Core-->>Agents: tool_result: SUCCESS (Proof Bundle)
+    Core->>OTel: Close Span (3-of-3 Evidence)
+    end
+    </div>
+  </div>
+</section>
+
+<!-- ── SEQ 5: FULL ENTERPRISE ────────────────────────── -->
+<section id="seq-enterprise">
+  <h2><span class="icon">🏢</span> Sequence: Full Enterprise Flow</h2>
+  <p class="section-desc">
+    End-to-end flow mapping all component interactions with the AIOps learning loop.
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Enterprise — Complete Governance Lifecycle</div>
+    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant A as 🤖 Agent
+    participant RC as 🎯 Risk Classifier
+    participant RA as ⚙️ Request Approval
+    participant TS as 💾 Task Store<br/>(Redis)
+    participant SW as 🔄 Sync Wait
+    participant Pools as 👥 Approver Pools<br/>(P2P)
+    participant OTel as 📊 OpenTelemetry
+
+    Note over A,RC: Tool Call Initiated
+    A->>RC: tool_call (Critical Action)
+
+    Note over RC: Analyzing Risk Tier...
+    RC->>RA: Escalate (Tier 4: Critical)
+
+    Note over RA,TS: Suspend & Store
+    RA->>TS: Persist Agent State & TraceID
+    RA->>SW: Transition to 'Waiting' State
+
+    Note over RA,Pools: P2P Broadcast
+    RA->>Pools: RFA (Target: Finance + Security)
+
+    Note over Pools: Decentralized Multi-Approval
+    par Multi-Sig Collection
+        Pools->>Pools: Finance SME signs (Verified ID)
+        Pools->>OTel: Approval Telemetry
+    and
+        Pools->>Pools: Security SME signs (Verified ID)
+        Pools->>OTel: Approval Telemetry
+    end
+
+    Note over Pools,SW: Consensus Reached (2/2)
+
+    alt Approved
+        Pools->>SW: Signal: Approved (Proof Bundle)
+        SW->>A: ✅ Continue Processing
+        Note right of A: Agent executes tool
+    else Rejected
+        Pools->>A: ❌ Not Approved
+        Note right of A: Agent triggers Plan B
+    end
+
+    Note over SW,RC: AIOps Learning Loop
+    SW->>RC: Update Classifier (Adjust Risk)
+    RC->>OTel: Finalize Trace
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  DATA & CONFIG                                         -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- ── DATA MODELS ────────────────────────────────────── -->
+<section id="data-models">
+  <h2><span class="icon">📋</span> Data Models</h2>
+  <p class="section-desc">
+    Protocol data structures shared between the Python SDK and TypeScript Core via <code>@agentguard/shared-proto</code>.
+  </p>
+
+  <h3>ApprovalRequest (RFA Payload)</h3>
+  <pre><code>{
+  <span class="str">"id"</span>: <span class="str">"uuid-v4"</span>,
+  <span class="str">"agentId"</span>: <span class="str">"finance-agent-001"</span>,
+  <span class="str">"toolName"</span>: <span class="str">"execute_transfer"</span>,
+  <span class="str">"toolArgs"</span>: { <span class="str">"amount"</span>: 1000000, <span class="str">"recipient"</span>: <span class="str">"vendor-xyz"</span> },
+  <span class="str">"riskTier"</span>: <span class="str">"CRITICAL"</span>,
+  <span class="str">"requiredPools"</span>: [<span class="str">"finance"</span>, <span class="str">"security"</span>],
+  <span class="str">"threshold"</span>: 2,
+  <span class="str">"trustRequirements"</span>: {
+    <span class="str">"minSeniority"</span>: <span class="str">"director"</span>,
+    <span class="str">"requiredSkills"</span>: [<span class="str">"finance"</span>, <span class="str">"risk-management"</span>],
+    <span class="str">"acceptedProviders"</span>: [<span class="str">"linkedin"</span>, <span class="str">"entra"</span>, <span class="str">"okta"</span>]
+  },
+  <span class="str">"traceId"</span>: <span class="str">"otel-trace-id"</span>,
+  <span class="str">"createdAt"</span>: <span class="str">"2026-02-09T12:00:00Z"</span>,
+  <span class="str">"ttl"</span>: 3600
+}</code></pre>
+
+  <h3>ApprovalResponse (Signature Payload)</h3>
+  <pre><code>{
+  <span class="str">"requestId"</span>: <span class="str">"uuid-v4"</span>,
+  <span class="str">"decision"</span>: <span class="str">"APPROVED"</span>,
+  <span class="str">"approver"</span>: {
+    <span class="str">"peerId"</span>: <span class="str">"libp2p-peer-id"</span>,
+    <span class="str">"identityHash"</span>: <span class="str">"sha256(verified-credential)"</span>,
+    <span class="str">"provider"</span>: <span class="str">"linkedin"</span>,
+    <span class="str">"claims"</span>: {
+      <span class="str">"name"</span>: <span class="str">"Alice Johnson"</span>,
+      <span class="str">"title"</span>: <span class="str">"Senior Finance Director"</span>,
+      <span class="str">"org"</span>: <span class="str">"Acme Corp"</span>
+    }
+  },
+  <span class="str">"signature"</span>: <span class="str">"ed25519-signature-bytes"</span>,
+  <span class="str">"timestamp"</span>: <span class="str">"2026-02-09T12:05:30Z"</span>
+}</code></pre>
+
+  <h3>ConsensusBundle (Final Proof)</h3>
+  <pre><code>{
+  <span class="str">"requestId"</span>: <span class="str">"uuid-v4"</span>,
+  <span class="str">"status"</span>: <span class="str">"CONSENSUS_REACHED"</span>,
+  <span class="str">"threshold"</span>: 2,
+  <span class="str">"signatures"</span>: [
+    { <span class="str">"pool"</span>: <span class="str">"finance"</span>, <span class="str">"approver"</span>: <span class="str">"..."</span>, <span class="str">"signature"</span>: <span class="str">"..."</span> },
+    { <span class="str">"pool"</span>: <span class="str">"security"</span>, <span class="str">"approver"</span>: <span class="str">"..."</span>, <span class="str">"signature"</span>: <span class="str">"..."</span> }
+  ],
+  <span class="str">"combinedProof"</span>: <span class="str">"threshold-signature-bytes"</span>,
+  <span class="str">"traceId"</span>: <span class="str">"otel-trace-id"</span>,
+  <span class="str">"completedAt"</span>: <span class="str">"2026-02-09T12:10:00Z"</span>
+}</code></pre>
+</section>
+
+<!-- ── RISK POLICIES ──────────────────────────────────── -->
+<section id="risk-policies">
+  <h2><span class="icon">📜</span> Risk Policy Configuration</h2>
+  <p class="section-desc">
+    Policies are defined in YAML and loaded by the Risk Classifier on startup. Wildcards (<code>*</code>) match any suffix.
+  </p>
+
+  <pre><code><span class="cmt"># Risk Classification Policies</span>
+<span class="kw">policies:</span>
+  <span class="cmt"># Critical: Large financial transactions</span>
+  - <span class="kw">tool:</span> <span class="str">"execute_transfer"</span>
+    <span class="kw">conditions:</span>
+      - <span class="kw">field:</span> <span class="str">"args.amount"</span>
+        <span class="kw">operator:</span> <span class="str">">"</span>
+        <span class="kw">value:</span> 100000
+    <span class="kw">tier:</span> <span class="str">"CRITICAL"</span>
+    <span class="kw">threshold:</span> 3
+    <span class="kw">pools:</span> [<span class="str">"finance"</span>, <span class="str">"security"</span>, <span class="str">"legal"</span>]
+    <span class="kw">timeout:</span> <span class="str">"1h"</span>
+    <span class="kw">onRejection:</span> <span class="str">"abort_agent"</span>
+    <span class="kw">onTimeout:</span> <span class="str">"escalate"</span>
+
+  <span class="cmt"># High: Moderate financial actions</span>
+  - <span class="kw">tool:</span> <span class="str">"execute_transfer"</span>
+    <span class="kw">conditions:</span>
+      - <span class="kw">field:</span> <span class="str">"args.amount"</span>
+        <span class="kw">operator:</span> <span class="str">">"</span>
+        <span class="kw">value:</span> 1000
+    <span class="kw">tier:</span> <span class="str">"HIGH"</span>
+    <span class="kw">threshold:</span> 2
+    <span class="kw">pools:</span> [<span class="str">"finance"</span>]
+
+  <span class="cmt"># Mid: Email communications</span>
+  - <span class="kw">tool:</span> <span class="str">"send_email"</span>
+    <span class="kw">tier:</span> <span class="str">"MID"</span>
+    <span class="kw">threshold:</span> 1
+    <span class="kw">pools:</span> [<span class="str">"itops"</span>]
+
+  <span class="cmt"># Low: Read-only operations</span>
+  - <span class="kw">tool:</span> <span class="str">"read_*"</span>
+    <span class="kw">tier:</span> <span class="str">"LOW"</span>
+    <span class="kw">autoApprove:</span> <span class="kw">true</span></code></pre>
+
+  <h3>Condition Operators</h3>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Operator</th><th>Description</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>&gt;</code></td><td>Greater than</td><td><code>amount &gt; 10000</code></td></tr>
+        <tr><td><code>&lt;</code></td><td>Less than</td><td><code>count &lt; 5</code></td></tr>
+        <tr><td><code>&gt;=</code></td><td>Greater or equal</td><td><code>priority &gt;= 3</code></td></tr>
+        <tr><td><code>&lt;=</code></td><td>Less or equal</td><td><code>discount &lt;= 50</code></td></tr>
+        <tr><td><code>==</code></td><td>Equals</td><td><code>env == "production"</code></td></tr>
+        <tr><td><code>!=</code></td><td>Not equals</td><td><code>status != "draft"</code></td></tr>
+        <tr><td><code>contains</code></td><td>String contains</td><td><code>recipient contains "@external"</code></td></tr>
+        <tr><td><code>matches</code></td><td>Regex match</td><td><code>action matches "delete|drop"</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── INTERACTION MATRIX ─────────────────────────────── -->
+<section id="interaction-matrix">
+  <h2><span class="icon">🔗</span> Component Interaction Matrix</h2>
+  <p class="section-desc">
+    Complete map of inter-component communication protocols and data payloads.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Source</th><th>Target</th><th>Protocol</th><th>Data</th></tr></thead>
+      <tbody>
+        <tr><td>Python Agent</td><td>HaaS Core</td><td>MCP / HTTP</td><td>ToolCall payload</td></tr>
+        <tr><td>HaaS Core</td><td>Risk Classifier</td><td>Internal</td><td>Tool metadata</td></tr>
+        <tr><td>Risk Classifier</td><td>State Machine</td><td>Internal</td><td>RiskTier + Policy</td></tr>
+        <tr><td>State Machine</td><td>Task Store</td><td>Redis / Map</td><td>PendingTask</td></tr>
+        <tr><td>State Machine</td><td>P2P Node</td><td>LibP2P</td><td>RFA broadcast</td></tr>
+        <tr><td>P2P Node</td><td>Approver Pools</td><td>GossipSub</td><td>Encrypted RFA</td></tr>
+        <tr><td>Reviewer</td><td>Identity Provider</td><td>OIDC / OAuth</td><td>Challenge-Response</td></tr>
+        <tr><td>Reviewer</td><td>P2P Node</td><td>GossipSub</td><td>Signed Approval</td></tr>
+        <tr><td>P2P Node</td><td>Consensus Engine</td><td>Internal</td><td>SignatureEntry</td></tr>
+        <tr><td>Consensus Engine</td><td>State Machine</td><td>Internal</td><td>ConsensusBundle</td></tr>
+        <tr><td>State Machine</td><td>Python Agent</td><td>MCP / HTTP</td><td>ToolCallResult</td></tr>
+        <tr><td>All Components</td><td>OTel Collector</td><td>gRPC</td><td>Traces + Events</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Component Communication Flow</div>
+    <div class="mermaid">
+graph LR
+    A["🤖 Python Agent"] -->|"MCP/HTTP"| B["⚙️ HaaS Core"]
+    B -->|"Internal"| C["🎯 Risk Classifier"]
+    C -->|"Internal"| D["🔄 State Machine"]
+    D -->|"Redis"| E["💾 Task Store"]
+    D -->|"LibP2P"| F["🌐 P2P Node"]
+    F -->|"GossipSub"| G["👥 Approver Pools"]
+    G -->|"OIDC/OAuth"| H["🔐 Identity Provider"]
+    G -->|"GossipSub"| F
+    F -->|"Internal"| I["🤝 Consensus Engine"]
+    I -->|"Internal"| D
+    D -->|"MCP/HTTP"| A
+    
+    B -.->|"gRPC"| J["📊 OpenTelemetry"]
+    D -.->|"gRPC"| J
+    F -.->|"gRPC"| J
+
+    style A fill:#0d2137,stroke:#58a6ff,color:#e6edf3
+    style B fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style C fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style D fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style E fill:#37290d,stroke:#d29922,color:#e6edf3
+    style F fill:#0d3720,stroke:#3fb950,color:#e6edf3
+    style G fill:#37290d,stroke:#d29922,color:#e6edf3
+    style H fill:#0d2f37,stroke:#79c0ff,color:#e6edf3
+    style I fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style J fill:#370d0d,stroke:#f85149,color:#e6edf3
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  DEPLOYMENT                                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- ── NETWORK TOPOLOGY ──────────────────────────────── -->
+<section id="network-topology">
+  <h2><span class="icon">🌍</span> Network Topology</h2>
+  <p class="section-desc">
+    Enterprise deployment spanning public DMZ, private VPC, and external validation zones.
+  </p>
+
+  <div class="diagram-container">
+    <div class="diagram-label">Enterprise Network — Multi-AZ Deployment</div>
+    <div class="mermaid">
+graph TB
+    subgraph CLOUD["☁️ Cloud Region (AWS / Azure / GCP)"]
+        subgraph DMZ["🌐 Public Subnet (DMZ)"]
+            ALB["API Gateway /<br/>Load Balancer"]
+            RELAY["P2P Relay Node<br/>(LibP2P Discovery)"]
+        end
+
+        subgraph VPC["🔒 Private Subnet (VPC)"]
+            subgraph AZ1["AZ-1"]
+                AGENTS2["Agent Mesh<br/>(Python Workers)"]
+            end
+            subgraph AZ2["AZ-2"]
+                HAAS["HaaS Core (Primary)<br/>+ Redis Cluster"]
+            end
+        end
+
+        subgraph MGMT["📊 Management VPC"]
+            OTELC["OTel Collector"]
+            JAEGER["Jaeger / Honeycomb"]
+        end
+
+        subgraph EXT["🔐 External Validation"]
+            IDMESH["Identity Adapter Mesh<br/>LinkedIn | Entra | GitHub | Okta | Web3"]
+        end
+    end
+
+    ALB --> AGENTS2
+    AGENTS2 --> HAAS
+    HAAS --> RELAY
+    HAAS --> OTELC
+    OTELC --> JAEGER
+    RELAY --> IDMESH
+
+    style CLOUD fill:#0d1117,stroke:#30363d,color:#e6edf3
+    style DMZ fill:#0d2137,stroke:#58a6ff,color:#e6edf3
+    style VPC fill:#1a0d37,stroke:#bc8cff,color:#e6edf3
+    style AZ1 fill:#161b22,stroke:#30363d,color:#e6edf3
+    style AZ2 fill:#161b22,stroke:#30363d,color:#e6edf3
+    style MGMT fill:#370d0d,stroke:#f85149,color:#e6edf3
+    style EXT fill:#0d2f37,stroke:#79c0ff,color:#e6edf3
+    </div>
+  </div>
+</section>
+
+<!-- ── DEPLOYMENT ─────────────────────────────────────── -->
+<section id="deployment">
+  <h2><span class="icon">🚀</span> Deployment Considerations</h2>
+  <p class="section-desc">
+    Best practices for production deployment of AgentGuard.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>Aspect</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Scaling</strong></td><td>HaaS Core: Horizontal (stateless with Redis). P2P Relay: Multiple nodes for redundancy.</td></tr>
+        <tr><td><strong>High Availability</strong></td><td>Multi-AZ deployment, Redis Cluster, P2P DHT for peer resilience.</td></tr>
+        <tr><td><strong>Security</strong></td><td>mTLS between agents and core, encrypted P2P channels, JWT validation.</td></tr>
+        <tr><td><strong>Compliance</strong></td><td>OTel traces exported to immutable storage (S3/GCS), 7-year retention for SOX.</td></tr>
+        <tr><td><strong>Performance</strong></td><td>Target &lt;100ms for risk classification, &lt;5s for P2P broadcast.</td></tr>
+        <tr><td><strong>Disaster Recovery</strong></td><td>Task Store snapshots, P2P state rehydration from DHT.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon green">🔧</div>
+        <div><h4>Performance Targets</h4></div>
+      </div>
+      <ul>
+        <li>Risk classification: <strong>&lt;100ms</strong></li>
+        <li>P2P broadcast: <strong>&lt;5s</strong></li>
+        <li>Identity verification: <strong>&lt;3s</strong></li>
+        <li>End-to-end (auto-approve): <strong>&lt;200ms</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon red">🛡️</div>
+        <div><h4>Security Controls</h4></div>
+      </div>
+      <ul>
+        <li>mTLS for all internal comms</li>
+        <li>Ed25519 signatures on approvals</li>
+        <li>Encrypted P2P channels</li>
+        <li>JWT with short-lived tokens</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon blue">📦</div>
+        <div><h4>Infrastructure</h4></div>
+      </div>
+      <ul>
+        <li>Redis Cluster for state</li>
+        <li>OTel Collector → Jaeger/Honeycomb</li>
+        <li>LibP2P DHT for peer discovery</li>
+        <li>S3/GCS for audit archive</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  FOOTER                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<footer>
+  <p>
+    <strong>AgentGuard</strong> — Architecture Documentation v1.0<br/>
+    Generated February 2026 &nbsp;|&nbsp; 
+    <a href="https://github.com/agentguard">GitHub</a> &nbsp;|&nbsp; 
+    MIT License
+  </p>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  SCRIPTS                                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+  // Initialize Mermaid with dark theme
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1a0d37',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#bc8cff',
+      lineColor: '#58a6ff',
+      secondaryColor: '#0d2137',
+      tertiaryColor: '#161b22',
+      fontFamily: 'Segoe UI, sans-serif',
+      fontSize: '13px',
+      noteBkgColor: '#1c2333',
+      noteTextColor: '#e6edf3',
+      noteBorderColor: '#30363d',
+      actorBkg: '#161b22',
+      actorBorder: '#58a6ff',
+      actorTextColor: '#e6edf3',
+      actorLineColor: '#30363d',
+      signalColor: '#58a6ff',
+      signalTextColor: '#e6edf3',
+      activationBkgColor: '#1a0d37',
+      activationBorderColor: '#bc8cff',
+      sequenceNumberColor: '#0f1117',
+      sectionBkgColor: '#161b22',
+      altSectionBkgColor: '#1c2333',
+      loopTextColor: '#e6edf3',
+    },
+    sequence: {
+      diagramMarginX: 20,
+      diagramMarginY: 20,
+      actorMargin: 60,
+      width: 180,
+      height: 50,
+      boxMargin: 10,
+      boxTextMargin: 5,
+      noteMargin: 10,
+      messageMargin: 40,
+      mirrorActors: false,
+      useMaxWidth: true,
+    },
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis',
+    },
+  });
+
+  // Active sidebar link tracking
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.sidebar a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(section => observer.observe(section));
+</script>
+
+</body>
+</html>

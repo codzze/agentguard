@@ -1,0 +1,27 @@
+{
+  "name": "@agentguard/shared-proto",
+  "version": "1.0.0",
+  "description": "Shared schemas and TypeScript types for the AgentGuard HaaS protocol",
+  "main": "dist/types.js",
+  "types": "dist/types.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./types.js": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    }
+  },
+  "files": ["dist", "schemas"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "rimraf": "^6.0.0"
+  },
+  "license": "MIT"
+}

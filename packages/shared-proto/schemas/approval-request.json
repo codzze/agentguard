@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApprovalRequest",
+  "description": "Request for Approval (RFA) payload broadcast across the HaaS P2P network",
+  "type": "object",
+  "required": ["id", "agentId", "toolName", "toolArgs", "riskTier", "requiredPools", "threshold", "traceId", "createdAt", "ttl"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this approval request"
+    },
+    "agentId": {
+      "type": "string",
+      "description": "Identifier of the AI agent that initiated the tool call"
+    },
+    "toolName": {
+      "type": "string",
+      "description": "Name of the tool/function the agent is trying to execute"
+    },
+    "toolArgs": {
+      "type": "object",
+      "description": "Arguments passed to the tool call",
+      "additionalProperties": true
+    },
+    "riskTier": {
+      "type": "string",
+      "enum": ["LOW", "MID", "HIGH", "CRITICAL"],
+      "description": "Risk classification tier assigned by the Risk Classifier"
+    },
+    "requiredPools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Approver pool topics that must provide signatures"
+    },
+    "threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of unique signatures required for consensus"
+    },
+    "trustRequirements": {
+      "type": "object",
+      "properties": {
+        "minSeniority": {
+          "type": "string",
+          "enum": ["associate", "senior", "director", "vp", "c-level"],
+          "description": "Minimum seniority level required for the approver"
+        },
+        "requiredSkills": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Skills the approver must have verified"
+        },
+        "acceptedProviders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of accepted identity providers (e.g., linkedin, github, oidc)"
+        }
+      }
+    },
+    "agentContext": {
+      "type": "object",
+      "description": "Optional context about the agent's reasoning and intent",
+      "properties": {
+        "reasoning": { "type": "string" },
+        "conversationSummary": { "type": "string" },
+        "previousActions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "traceId": {
+      "type": "string",
+      "description": "OpenTelemetry trace ID for end-to-end observability"
+    },
+    "spanId": {
+      "type": "string",
+      "description": "OpenTelemetry span ID for this specific request"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the request was created"
+    },
+    "ttl": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Time-to-live in seconds before the request expires"
+    },
+    "callbackUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional webhook URL for async approval notification"
+    }
+  }
+}

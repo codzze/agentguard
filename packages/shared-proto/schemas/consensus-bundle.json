@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConsensusBundleSchema",
+  "description": "Final consensus proof containing all collected signatures",
+  "type": "object",
+  "required": ["requestId", "status", "threshold", "signatures", "completedAt", "traceId"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["CONSENSUS_REACHED", "PARTIAL", "DENIED", "TIMEOUT"]
+    },
+    "threshold": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pool", "approverId", "signature", "identityHash", "provider", "timestamp"],
+        "properties": {
+          "pool": { "type": "string" },
+          "approverId": { "type": "string" },
+          "signature": { "type": "string" },
+          "identityHash": { "type": "string" },
+          "provider": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "combinedProof": {
+      "type": "string",
+      "description": "Combined threshold signature (optional, for Shamir/MuSig2)"
+    },
+    "traceId": { "type": "string" },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "totalWaitTimeMs": {
+      "type": "integer",
+      "description": "Total time from request creation to consensus"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IdentityProof",
+  "description": "Verified identity proof submitted by a human reviewer",
+  "type": "object",
+  "required": ["provider", "token", "verifiedAt"],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "description": "Identity provider name (linkedin, github, oidc, okta, web3, pgp)"
+    },
+    "token": {
+      "type": "string",
+      "description": "JWT, Verifiable Credential, OAuth token, or signed payload"
+    },
+    "tokenType": {
+      "type": "string",
+      "enum": ["jwt", "verifiable-credential", "oauth2", "pgp-signature", "wallet-signature"],
+      "description": "Type of the identity token"
+    },
+    "claims": {
+      "type": "object",
+      "description": "Extracted claims from the identity proof",
+      "properties": {
+        "sub": { "type": "string", "description": "Subject / unique user ID" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "title": { "type": "string" },
+        "org": { "type": "string" },
+        "orgVerified": { "type": "boolean" },
+        "seniority": {
+          "type": "string",
+          "enum": ["associate", "senior", "lead", "director", "vp", "c-level"]
+        },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "groups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "AD groups, GitHub teams, or org memberships"
+        }
+      }
+    },
+    "verifiedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the original token for audit trail"
+    }
+  }
+}
