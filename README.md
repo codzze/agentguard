@@ -25,32 +25,40 @@ As AI agents evolve from chatbots to autonomous actors with real-world tool acce
 
 ---
 
+## 📺 Demo
+
+![AgentGuard Demo](docs/assets/demo.gif)
+
+_Watch AgentGuard intercept a Python agent trying to delete a production database, routing the request to a human admin for approval._
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```
 Python Agent → MCP Interceptor → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent
 ```
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Agent SDK** | Python | `@haas_governed` decorator for agent functions |
-| **Governance Core** | TypeScript/Node.js | Risk classification, state machine, consensus engine |
-| **Transport** | MCP | Agent ↔ Interceptor communication |
-| **P2P Network** | LibP2P GossipSub | Decentralized approval broadcast |
-| **Identity** | Pluggable (LinkedIn, GitHub, OIDC, Okta, Web3) | Expert verification |
-| **Observability** | OpenTelemetry | Immutable audit trail |
-| **Dashboard** | React/Vite | Enterprise reviewer UI |
+| Component           | Technology                                     | Purpose                                              |
+| ------------------- | ---------------------------------------------- | ---------------------------------------------------- |
+| **Agent SDK**       | Python                                         | `@haas_governed` decorator for agent functions       |
+| **Governance Core** | TypeScript/Node.js                             | Risk classification, state machine, consensus engine |
+| **Transport**       | MCP                                            | Agent ↔ Interceptor communication                    |
+| **P2P Network**     | LibP2P GossipSub                               | Decentralized approval broadcast                     |
+| **Identity**        | Pluggable (LinkedIn, GitHub, OIDC, Okta, Web3) | Expert verification                                  |
+| **Observability**   | OpenTelemetry                                  | Immutable audit trail                                |
+| **Dashboard**       | React/Vite                                     | Enterprise reviewer UI                               |
 
 ---
 
 ## 📦 Packages
 
-| Package | Description | Language |
-|---------|------------|----------|
-| `@agentguard/core` | Governance interceptor, risk classifier, P2P node | TypeScript |
-| `@agentguard/dashboard` | Expert reviewer web application | React/TypeScript |
-| `@agentguard/shared-proto` | Shared schemas and protocol definitions | TypeScript |
-| `agentguard` (PyPI) | Python SDK for AI agent integration | Python |
+| Package                    | Description                                       | Language         |
+| -------------------------- | ------------------------------------------------- | ---------------- |
+| `@agentguard/core`         | Governance interceptor, risk classifier, P2P node | TypeScript       |
+| `@agentguard/dashboard`    | Expert reviewer web application                   | React/TypeScript |
+| `@agentguard/shared-proto` | Shared schemas and protocol definitions           | TypeScript       |
+| `agentguard` (PyPI)        | Python SDK for AI agent integration               | Python           |
 
 ---
 
@@ -67,16 +75,38 @@ async def execute_wire_transfer(amount: float, recipient: str):
     return banking_api.transfer(amount, recipient)
 ```
 
+### 🚦 Defining Policy Logic (policies.yaml)
+
+Define exactly _who_ approves _what_. Route risks intelligently based on content:
+
+```yaml
+policies:
+  # Route database risks to the DBA team
+  - tool: "drop_table"
+    tier: CRITICAL
+    pools: ["dba-team", "engineering-leads"]
+    threshold: 2 # Requires 2 approvals
+
+  # Route budget risks to the CFO
+  - tool: "approve_budget"
+    tier: HIGH
+    pools: ["finance-exec"]
+    conditions:
+      - field: "amount"
+        operator: ">"
+        value: 5000
+```
+
 ### For Governance Admins (Node.js)
 
 ```typescript
-import { HaaSCore } from '@agentguard/core';
+import { HaaSCore } from "@agentguard/core";
 
 const core = new HaaSCore({
-  policies: './policies.yaml',
-  redis: 'redis://localhost:6379',
-  identity: ['linkedin', 'github', 'oidc'],
-  telemetry: { endpoint: 'http://otel-collector:4318' }
+  policies: "./policies.yaml",
+  redis: "redis://localhost:6379",
+  identity: ["linkedin", "github", "oidc"],
+  telemetry: { endpoint: "http://otel-collector:4318" },
 });
 
 await core.start();
@@ -86,12 +116,12 @@ await core.start();
 
 ## 🔴 Risk Classification
 
-| Tier | Level | Example | Approval |
-|------|-------|---------|----------|
-| 1 | Low | Read file | Auto-approve (logged) |
-| 2 | Mid | Send email | Single-sig |
-| 3 | High | DB write, $1K+ | Multi-sig (2/3) |
-| 4 | Critical | Prod delete, $1M+ | Cross-pool executive-sig |
+| Tier | Level    | Example           | Approval                 |
+| ---- | -------- | ----------------- | ------------------------ |
+| 1    | Low      | Read file         | Auto-approve (logged)    |
+| 2    | Mid      | Send email        | Single-sig               |
+| 3    | High     | DB write, $1K+    | Multi-sig (2/3)          |
+| 4    | Critical | Prod delete, $1M+ | Cross-pool executive-sig |
 
 ---
 
@@ -110,7 +140,7 @@ AgentGuard doesn't lock you into a single auth provider. Implement `IIdentityPro
 
 ## 📊 OpenTelemetry Audit Trail
 
-Every governance decision is traced end-to-end:
+Every governance decision is traced end-to-end, making your agents **SOX-compliant** and **Audit-ready** out of the box.
 
 ```
 Trace: "HaaS Governance"
