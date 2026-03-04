@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { Shield, ClipboardList, Settings, Activity } from 'lucide-react';
+import { Shield, ClipboardList, Settings, Activity, Play } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const navItems = [
@@ -10,18 +10,18 @@ const navItems = [
 
 export function Layout() {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-800 bg-gray-900/40 backdrop-blur-xl flex flex-col">
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
-          <Shield className="h-8 w-8 text-brand-500" />
+      <aside className="w-60 border-r border-gray-200 bg-white flex flex-col">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-200">
+          <Shield className="h-7 w-7 text-brand-600" />
           <div>
-            <h1 className="text-lg font-bold text-white">AgentGuard</h1>
-            <p className="text-xs text-gray-500">Human-as-a-Service</p>
+            <h1 className="text-base font-bold text-gray-900">AgentGuard</h1>
+            <p className="text-[11px] text-gray-500">HaaS Admin Console</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-3 space-y-0.5">
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -29,10 +29,10 @@ export function Layout() {
               end={to === '/'}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-brand-600/10 text-brand-400 border border-brand-500/20'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50',
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100',
                 )
               }
             >
@@ -40,11 +40,20 @@ export function Layout() {
               {label}
             </NavLink>
           ))}
+
+          <div className="border-t border-gray-200 my-2" />
+          <a
+            href="/agent-demo.html"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            <Play className="h-4 w-4" />
+            Agent Demo
+          </a>
         </nav>
 
-        <div className="px-6 py-4 border-t border-gray-800">
+        <div className="px-5 py-3 border-t border-gray-200">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse-slow" />
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
             <span className="text-xs text-gray-500">Core Connected</span>
           </div>
         </div>

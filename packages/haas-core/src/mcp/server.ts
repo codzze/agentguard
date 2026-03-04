@@ -1,7 +1,13 @@
 import http from 'http';
 import { EventEmitter } from 'events';
 import { MCPInterceptor, MCPToolCall, MCPToolResult } from './interceptor.js';
-import type { HaaSCoreConfig } from '../types/index.js';
+import type { HaaSCoreConfig, RiskPolicy } from '../types/index.js';
+import type { AIOpsService } from '../aiops/feedback-loop.js';
+import {
+  loadProviders, saveProviders, type ProviderSetting,
+  loadAuditLog, appendAuditEntry, getAuditEntries, type AuditRecord,
+  savePolicies as persistPolicies,
+} from '../storage/persistent-store.js';
 
 export interface MCPServerConfig extends HaaSCoreConfig {
   /** Port for the HTTP server (default: 3100) */
@@ -30,12 +36,28 @@ export class MCPProxyServer extends EventEmitter {
   private server: http.Server | null = null;
   private port: number;
   private host: string;
+  private aiops: AIOpsService | null = null;
+
+  // Loaded from persistent storage on startup
+  private providerSettings: ProviderSetting[];
+  private auditEntries: AuditRecord[];
 
   constructor(config: MCPServerConfig) {
     super();
     this.interceptor = new MCPInterceptor(config);
     this.port = config.port ?? 3100;
     this.host = config.host ?? '0.0.0.0';
+
+    // Load persisted data
+    this.providerSettings = loadProviders();
+    this.auditEntries = loadAuditLog();
+  }
+
+  /**
+   * Attach the AIOps service for stats endpoints.
+   */
+  setAIOps(aiops: AIOpsService): void {
+    this.aiops = aiops;
   }
 
   /**
@@ -108,6 +130,20 @@ export class MCPProxyServer extends EventEmitter {
         await this.handleListPending(res);
       } else if (method === 'POST' && url.pathname === '/demo/trigger') {
         await this.handleDemoTrigger(req, res);
+      } else if (method === 'GET' && url.pathname === '/settings/policies') {
+        this.handleGetPolicies(res);
+      } else if (method === 'POST' && url.pathname === '/settings/policies') {
+        await this.handleSavePolicies(req, res);
+      } else if (method === 'GET' && url.pathname === '/settings/providers') {
+        this.handleGetProviders(res);
+      } else if (method === 'POST' && url.pathname === '/settings/providers') {
+        await this.handleSaveProviders(req, res);
+      } else if (method === 'GET' && url.pathname === '/settings/providers/enabled') {
+        this.handleGetEnabledProviders(res);
+      } else if (method === 'GET' && url.pathname === '/aiops/stats') {
+        this.handleGetAIOpsStats(res);
+      } else if (method === 'GET' && url.pathname === '/audit/log') {
+        this.handleGetAuditLog(res);
       } else {
         this.sendJSON(res, 404, { error: 'Not found' });
       }
@@ -151,7 +187,52 @@ export class MCPProxyServer extends EventEmitter {
       return;
     }
 
+    const sm = this.interceptor.getStateMachine();
+
+    // Check if this is a rejection
+    if (signature.decision === 'REJECT') {
+      await sm.handleRejection(requestId, {
+        requestId,
+        decision: 'REJECTED',
+        reason: signature.reason ?? 'Rejected by reviewer',
+        approver: {
+          peerId: signature.approverId ?? 'unknown',
+          identityHash: '',
+          provider: 'dashboard',
+          pool: signature.pool ?? 'general',
+        },
+        signature: `dashboard-sig-${Date.now()}`,
+        timestamp: signature.timestamp ?? new Date().toISOString(),
+      });
+
+      // Record to audit log
+      const task = await sm.getState(requestId);
+      this.recordResolved(task ?? {
+        request: { id: requestId, toolName: 'unknown', riskTier: 'UNKNOWN' },
+        state: 'REJECTED',
+        signatures: [signature],
+      });
+
+      this.sendJSON(res, 200, { consensusReached: false, decision: 'REJECTED', requestId });
+      return;
+    }
+
+    // Handle approval signature
     const result = await this.interceptor.submitSignature(requestId, signature, threshold ?? 1);
+
+    // Record to audit log
+    const task = await sm.getState(requestId);
+    if (task) {
+      this.recordResolved(task);
+    } else {
+      this.recordResolved({
+        request: { id: requestId, toolName: 'unknown', riskTier: 'UNKNOWN' },
+        state: result.consensusReached ? 'APPROVED' : 'PARTIAL_APPROVAL',
+        signatures: [signature],
+        consensusReached: result.consensusReached,
+      });
+    }
+
     this.sendJSON(res, 200, result);
   }
 
@@ -220,6 +301,87 @@ export class MCPProxyServer extends EventEmitter {
       message: `Demo triggered: ${scenario}`,
       results,
     });
+  }
+
+  // ---- Settings Endpoints ----
+
+  private handleGetPolicies(res: http.ServerResponse): void {
+    const policies = this.interceptor.getClassifier().getPolicies();
+    this.sendJSON(res, 200, { policies });
+  }
+
+  private async handleSavePolicies(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const body = await this.readBody(req);
+    const { policies } = JSON.parse(body) as { policies: RiskPolicy[] };
+
+    if (!Array.isArray(policies)) {
+      this.sendJSON(res, 400, { error: 'Expected { policies: [...] }' });
+      return;
+    }
+
+    // Replace classifier policies
+    const classifier = this.interceptor.getClassifier();
+    for (const policy of policies) {
+      classifier.addPolicy(policy);
+    }
+
+    this.sendJSON(res, 200, { message: 'Policies updated', count: policies.length });
+  }
+
+  private handleGetProviders(res: http.ServerResponse): void {
+    this.sendJSON(res, 200, { providers: this.providerSettings });
+  }
+
+  private async handleSaveProviders(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const body = await this.readBody(req);
+    const { providers } = JSON.parse(body) as { providers: ProviderSetting[] };
+
+    if (!Array.isArray(providers)) {
+      this.sendJSON(res, 400, { error: 'Expected { providers: [...] }' });
+      return;
+    }
+
+    this.providerSettings = providers;
+    saveProviders(providers);
+    this.sendJSON(res, 200, { message: 'Providers saved', count: providers.length });
+  }
+
+  /**
+   * Returns only enabled providers — used by the approval page to show auth buttons.
+   */
+  private handleGetEnabledProviders(res: http.ServerResponse): void {
+    const enabled = this.providerSettings.filter((p) => p.enabled);
+    this.sendJSON(res, 200, { providers: enabled });
+  }
+
+  private handleGetAIOpsStats(res: http.ServerResponse): void {
+    if (!this.aiops) {
+      this.sendJSON(res, 200, {
+        totalTrackedTools: 0,
+        totalAdjustments: 0,
+        pendingRecommendations: 0,
+        topApproved: [],
+        topRejected: [],
+      });
+      return;
+    }
+    this.sendJSON(res, 200, this.aiops.getSummary());
+  }
+
+  private handleGetAuditLog(res: http.ServerResponse): void {
+    // Return from persistent storage
+    const entries = getAuditEntries(100);
+    this.sendJSON(res, 200, { entries });
+  }
+
+  /**
+   * Record a resolved task for audit log purposes.
+   * Persists to disk so entries survive server restarts.
+   */
+  recordResolved(task: unknown): void {
+    const entry: AuditRecord = { task, resolvedAt: Date.now() };
+    this.auditEntries.push(entry);
+    appendAuditEntry(entry);
   }
 
   // ---- Helpers ----

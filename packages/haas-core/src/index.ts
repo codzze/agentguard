@@ -48,6 +48,14 @@ export {
 // Policy Loader
 export { PolicyLoader } from './classifier/policies.js';
 
+// AIOps
+export { AIOpsService } from './aiops/feedback-loop.js';
+export type { AIOpsConfig, ToolStats, TierAdjustment } from './aiops/feedback-loop.js';
+
+// Skill Framework
+export { SkillFramework } from './aiops/skill-framework.js';
+export type { SkillMapping, SkillMatchCriteria, SkillFrameworkConfig, PoolResolution } from './aiops/skill-framework.js';
+
 // Re-export shared protocol types
 export type {
   RiskTier,

@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { AuditLog } from './pages/AuditLog';
 import { Settings } from './pages/Settings';
+import { ApprovePage } from './pages/ApprovePage';
 
 export default function App() {
   return (
@@ -12,6 +13,8 @@ export default function App() {
         <Route path="/audit" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
+      {/* Standalone approval page (no sidebar) — for SME/specialist access */}
+      <Route path="/approve/:requestId" element={<ApprovePage />} />
     </Routes>
   );
 }

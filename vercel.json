@@ -1,0 +1,46 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd packages/haas-dashboard && npm run build && mkdir -p dist/docs && cp ../../docs/index.html dist/docs/index.html",
+  "outputDirectory": "packages/haas-dashboard/dist",
+  "installCommand": "npm install",
+  "framework": null,
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 10,
+      "memory": 256
+    }
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "X-DNS-Prefetch-Control", "value": "on" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/health", "destination": "/api/handler?_r=/health" },
+    { "source": "/pending", "destination": "/api/handler?_r=/pending" },
+    { "source": "/mcp/approve", "destination": "/api/handler?_r=/mcp/approve" },
+    { "source": "/mcp/tools/call", "destination": "/api/handler?_r=/mcp/tools/call" },
+    { "source": "/demo/trigger", "destination": "/api/handler?_r=/demo/trigger" },
+    { "source": "/settings/policies", "destination": "/api/handler?_r=/settings/policies" },
+    { "source": "/settings/providers", "destination": "/api/handler?_r=/settings/providers" },
+    { "source": "/settings/providers/enabled", "destination": "/api/handler?_r=/settings/providers/enabled" },
+    { "source": "/aiops/stats", "destination": "/api/handler?_r=/aiops/stats" },
+    { "source": "/audit/log", "destination": "/api/handler?_r=/audit/log" },
+    { "source": "/docs", "destination": "/docs/index.html" },
+    { "source": "/((?!api|docs|assets).*)", "destination": "/index.html" }
+  ]
+}

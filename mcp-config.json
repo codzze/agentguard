@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "agentguard": {
+      "command": "npx",
+      "args": ["tsx", "packages/haas-core/src/mcp/mcp-server.ts"],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

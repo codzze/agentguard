@@ -7,9 +7,11 @@ The AgentGuard Risk Classifier is the first decision point in the governance pip
 ## Risk Tiers
 
 ### Tier 1 — LOW Risk
+
 **Trigger:** Auto-Approve (logged only)  
 **Threshold:** 0 signatures  
 **Examples:**
+
 - Reading a public file
 - Formatting a document
 - Querying non-sensitive data
@@ -18,9 +20,11 @@ The AgentGuard Risk Classifier is the first decision point in the governance pip
 **Behavior:** The tool call passes through immediately. An OpenTelemetry trace is created for auditability, but no human is notified.
 
 ### Tier 2 — MID Risk
+
 **Trigger:** Single-Sig Approval  
 **Threshold:** 1 signature from 1 pool  
 **Examples:**
+
 - Sending an email to a client
 - Updating a Jira ticket
 - Modifying a non-production config
@@ -29,9 +33,11 @@ The AgentGuard Risk Classifier is the first decision point in the governance pip
 **Behavior:** A single verified human from the appropriate pool must approve. The request goes to one pool (e.g., IT Ops) and the first qualified person to sign releases the action.
 
 ### Tier 3 — HIGH Risk
+
 **Trigger:** Multi-Sig Approval  
 **Threshold:** 2-3 signatures from 1 pool  
 **Examples:**
+
 - Writing to a production database
 - Processing a $1K-$100K transaction
 - Modifying access permissions
@@ -40,9 +46,11 @@ The AgentGuard Risk Classifier is the first decision point in the governance pip
 **Behavior:** Multiple verified humans from the same pool must independently approve. This prevents collusion and ensures peer review.
 
 ### Tier 4 — CRITICAL Risk
+
 **Trigger:** Cross-Pool Executive-Sig  
 **Threshold:** 2-3+ signatures from MULTIPLE pools  
 **Examples:**
+
 - Deleting a production VPC
 - Processing a $100K+ wire transfer
 - Modifying encryption keys
@@ -101,32 +109,33 @@ policies:
 
 ## Condition Operators
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `>` | Greater than | `amount > 10000` |
-| `<` | Less than | `count < 5` |
-| `>=` | Greater or equal | `priority >= 3` |
-| `<=` | Less or equal | `discount <= 50` |
-| `==` | Equals | `env == "production"` |
-| `!=` | Not equals | `status != "draft"` |
-| `contains` | String contains | `recipient contains "@external"` |
-| `matches` | Regex match | `action matches "delete\|drop\|truncate"` |
+| Operator   | Description      | Example                                   |
+| ---------- | ---------------- | ----------------------------------------- |
+| `>`        | Greater than     | `amount > 10000`                          |
+| `<`        | Less than        | `count < 5`                               |
+| `>=`       | Greater or equal | `priority >= 3`                           |
+| `<=`       | Less or equal    | `discount <= 50`                          |
+| `==`       | Equals           | `env == "production"`                     |
+| `!=`       | Not equals       | `status != "draft"`                       |
+| `contains` | String contains  | `recipient contains "@external"`          |
+| `matches`  | Regex match      | `action matches "delete\|drop\|truncate"` |
 
 ## AIOps Feedback Loop
 
-The Risk Classifier continuously learns from human decisions:
+The Risk Classifier continuously learns from human decisions via the `AIOpsService`:
 
-1. **Auto-tuning:** If a Tier 3 action is approved 100 consecutive times without rejection, the system may recommend downgrading it to Tier 2.
-2. **Escalation learning:** If a specific tool call is frequently rejected, the system may recommend upgrading its risk tier.
-3. **Pattern recognition:** The AIOps component identifies common approval patterns and suggests policy optimizations.
+1. **Auto-tuning:** If a tool is approved 50+ consecutive times without rejection, the system automatically downgrades its risk tier (e.g., HIGH → MID). Configurable via `downgradeThreshold`.
+2. **Escalation learning:** If a tool is rejected 5+ consecutive times, the system automatically upgrades its risk tier (e.g., MID → HIGH). Configurable via `upgradeThreshold`.
+3. **Safety guardrail:** CRITICAL tier tools are never auto-downgraded — they produce a pending recommendation that requires human confirmation via the dashboard.
+4. **Audit:** All tier adjustments are emitted as `aiops:tier-adjusted` events and logged to OpenTelemetry.
 
 ## Trust Requirements
 
 Each risk tier can specify the minimum qualifications for the human reviewer:
 
-| Tier | Minimum Seniority | Required Verification |
-|------|-------------------|----------------------|
-| LOW | None | None |
-| MID | Associate | Verified Workplace |
-| HIGH | Senior | Workplace + Relevant Skill |
-| CRITICAL | Director/VP | Workplace + Skill + Multi-Factor |
+| Tier     | Minimum Seniority | Required Verification            |
+| -------- | ----------------- | -------------------------------- |
+| LOW      | None              | None                             |
+| MID      | Associate         | Verified Workplace               |
+| HIGH     | Senior            | Workplace + Relevant Skill       |
+| CRITICAL | Director/VP       | Workplace + Skill + Multi-Factor |

@@ -27,9 +27,13 @@ As AI agents evolve from chatbots to autonomous actors with real-world tool acce
 
 ## 📺 Demo
 
-![AgentGuard Demo](docs/assets/demo.gif)
-
-_Watch AgentGuard intercept a Python agent trying to delete a production database, routing the request to a human admin for approval._
+> **Run the built-in demo:**
+>
+> ```bash
+> ./deploy-mcp.sh demo
+> ```
+>
+> This starts HaaS Core and triggers sample LOW/MID/HIGH/CRITICAL scenarios. Open the dashboard at `http://localhost:5173` to approve/reject requests.
 
 ---
 
@@ -174,6 +178,8 @@ MIT — See [LICENSE](LICENSE) for details.
 ## 📚 Documentation
 
 - [Architecture Reference](docs/ARCHITECTURE.md)
-- [Copilot Build Instructions](COPILOT_INSTRUCTIONS.md)
+- [Quick Start Guide](docs/QUICKSTART.md)
+- [API Reference](docs/API_REFERENCE.md)
 - [Risk Classification Guide](docs/RISK_CLASSIFICATION.md)
 - [Sequence Flows](docs/SEQUENCE_FLOWS.md)
+- [Copilot Build Instructions](COPILOT_INSTRUCTIONS.md)

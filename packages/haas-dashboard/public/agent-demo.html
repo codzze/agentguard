@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentGuard — Live Agent Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f9fafb; --bg-white: #ffffff; --bg-card: #ffffff;
+      --fg: #111827; --fg-muted: #6b7280; --fg-dim: #9ca3af;
+      --border: #e5e7eb; --border-active: #d1d5db;
+      --brand: #4f46e5; --brand-light: #eef2ff; --brand-hover: #4338ca;
+      --green: #059669; --green-bg: #ecfdf5; --green-border: #a7f3d0;
+      --amber: #d97706; --amber-bg: #fffbeb; --amber-border: #fde68a;
+      --red: #dc2626; --red-bg: #fef2f2; --red-border: #fecaca;
+      --orange: #ea580c; --orange-bg: #fff7ed; --orange-border: #fed7aa;
+      --blue: #2563eb; --blue-bg: #eff6ff; --blue-border: #bfdbfe;
+      --purple: #7c3aed; --purple-bg: #f5f3ff;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    html { font-size: 15px; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--fg); min-height: 100vh; }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .6rem 1.25rem; border-bottom: 1px solid var(--border);
+      background: var(--bg-white);
+    }
+    .topbar-left { display: flex; align-items: center; gap: .75rem; }
+    .topbar .logo { font-weight: 700; font-size: .95rem; color: var(--fg); display: flex; align-items: center; gap: .4rem; }
+    .topbar .logo svg { width: 22px; height: 22px; color: var(--brand); }
+    .topbar .logo span { color: var(--brand); }
+    .topbar .tag {
+      font-size: .6rem; font-weight: 600; padding: .2rem .55rem;
+      border-radius: 99px; background: var(--brand-light); color: var(--brand);
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-right a { font-size: .8rem; font-weight: 500; color: var(--fg-muted); text-decoration: none; transition: color .15s; }
+    .topbar-right a:hover { color: var(--fg); text-decoration: none; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .agent-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+    .agent-header {
+      padding: .75rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: .75rem; background: var(--bg-white);
+    }
+    .agent-avatar {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--brand), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; color: #fff;
+    }
+    .agent-info h3 { font-size: .85rem; font-weight: 600; }
+    .agent-info p { font-size: .65rem; color: var(--fg-muted); }
+
+    .agent-feed {
+      flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+      display: flex; flex-direction: column; gap: .75rem; background: var(--bg);
+    }
+
+    .agent-controls {
+      padding: .6rem 1.25rem; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: .5rem; background: var(--bg-white);
+    }
+    .btn {
+      padding: .5rem .9rem; border-radius: 8px; border: none;
+      font-weight: 600; font-size: .8rem; cursor: pointer;
+      font-family: var(--sans); transition: all .15s;
+    }
+    .btn-primary { flex: 1; background: var(--brand); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-hover); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-outline { padding: .5rem .75rem; border: 1px solid var(--border); background: var(--bg-white); color: var(--fg-muted); }
+    .btn-outline:hover { border-color: var(--border-active); color: var(--fg); background: var(--bg); }
+    .btn-danger { padding: .5rem .75rem; border: 1px solid var(--red-border); background: var(--red-bg); color: var(--red); }
+    .btn-danger:hover { background: #fee2e2; }
+
+    .feed-item { animation: fadeUp .3s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .thinking {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .5rem .75rem; border-radius: 8px;
+      background: var(--bg-white); border: 1px solid var(--border);
+      font-size: .8rem; color: var(--fg-muted);
+    }
+    .thinking .dots span {
+      display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--brand); animation: pulse 1.2s infinite;
+    }
+    .thinking .dots span:nth-child(2) { animation-delay: .2s; }
+    .thinking .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes pulse { 0%, 80%, 100% { opacity: .3; transform: scale(.8); } 40% { opacity: 1; transform: scale(1.2); } }
+
+    .agent-msg {
+      padding: .65rem .85rem; border-radius: 8px;
+      background: var(--bg-white); border: 1px solid var(--border);
+      font-size: .8rem; line-height: 1.55;
+    }
+    .agent-msg .label {
+      font-size: .6rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: .25rem; color: var(--brand);
+    }
+    .agent-msg.llm .label { color: var(--purple); }
+    .agent-msg.system .label { color: var(--fg-dim); }
+
+    .tool-card { padding: .75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-white); }
+    .tool-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+    .tool-name { font-family: var(--mono); font-size: .75rem; font-weight: 500; display: flex; align-items: center; gap: .4rem; color: var(--fg); }
+    .tool-name .icon { font-size: .85rem; }
+    .tier-badge { font-size: .6rem; font-weight: 700; padding: .15rem .5rem; border-radius: 99px; text-transform: uppercase; letter-spacing: .04em; }
+    .tier-LOW { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .tier-MID { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+    .tier-HIGH { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-border); }
+    .tier-CRITICAL { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+    .tool-args {
+      font-family: var(--mono); font-size: .7rem; padding: .45rem .65rem;
+      background: var(--bg); border-radius: 6px; margin-bottom: .5rem;
+      color: var(--fg-muted); overflow-x: auto; white-space: pre;
+      border: 1px solid var(--border);
+    }
+
+    .tool-status { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 500; flex-wrap: wrap; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .status-approved { color: var(--green); }
+    .status-approved .status-dot { background: var(--green); }
+    .status-auto { color: var(--blue); }
+    .status-auto .status-dot { background: var(--blue); }
+    .status-waiting { color: var(--amber); }
+    .status-waiting .status-dot { background: var(--amber); animation: blink 1s infinite; }
+    .status-rejected { color: var(--red); }
+    .status-rejected .status-dot { background: var(--red); }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+    .approve-link {
+      display: inline-flex; align-items: center; gap: .3rem;
+      margin-left: .5rem; font-size: .7rem; padding: .25rem .5rem;
+      border-radius: 6px; background: var(--brand-light); color: var(--brand);
+      text-decoration: none; transition: all .15s;
+    }
+    .approve-link:hover { background: #dbeafe; text-decoration: none; }
+
+    .sig-info { font-size: .65rem; color: var(--fg-dim); margin-top: .2rem; }
+
+    .gov-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-white); }
+    .gov-header { padding: .75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: .5rem; }
+    .gov-header h3 { font-size: .85rem; font-weight: 600; }
+    .gov-body { flex: 1; overflow-y: auto; padding: .75rem; }
+
+    .gov-stat {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .55rem .75rem; border-radius: 8px; margin-bottom: .4rem;
+      background: var(--bg); border: 1px solid var(--border);
+    }
+    .gov-stat .k { font-size: .72rem; color: var(--fg-muted); }
+    .gov-stat .v { font-size: .85rem; font-weight: 700; font-family: var(--mono); }
+
+    .gov-section-title { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); margin: .85rem 0 .4rem; }
+
+    .gov-task { padding: .6rem .75rem; border-radius: 8px; margin-bottom: .5rem; border: 1px solid var(--border); background: var(--bg); }
+    .gov-task-name { font-family: var(--mono); font-size: .75rem; font-weight: 500; display: flex; align-items: center; justify-content: space-between; }
+    .gov-task-meta { font-size: .65rem; color: var(--fg-dim); margin-top: .2rem; }
+    .gov-task-sigs { font-size: .62rem; color: var(--fg-dim); margin-top: .15rem; font-style: italic; }
+    .gov-task-actions { margin-top: .4rem; display: flex; gap: .4rem; }
+    .gov-btn { flex: 1; padding: .35rem; border-radius: 6px; border: none; font-size: .72rem; font-weight: 600; cursor: pointer; font-family: var(--sans); transition: all .15s; }
+    .gov-btn-approve { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .gov-btn-approve:hover { background: #d1fae5; }
+    .gov-btn-reject { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+    .gov-btn-reject:hover { background: #fee2e2; }
+
+    .gov-log-entry {
+      display: flex; align-items: flex-start; gap: .5rem;
+      padding: .3rem 0; font-size: .67rem; color: var(--fg-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .gov-log-entry:last-child { border-bottom: none; }
+    .gov-log-entry .ts { font-family: var(--mono); color: var(--fg-dim); font-size: .6rem; width: 55px; flex-shrink: 0; padding-top: 1px; }
+
+    .empty-state { font-size: .72rem; color: var(--fg-dim); padding: .5rem; text-align: center; font-style: italic; }
+
+    @media (max-width: 800px) {
+      .main { flex-direction: column; }
+      .agent-panel { border-right: none; border-bottom: 1px solid var(--border); }
+      .gov-panel { width: 100%; max-height: 40vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Agent<span>Guard</span>
+        </div>
+        <span class="tag">Live Agent Demo</span>
+      </div>
+      <div class="topbar-right">
+        <a href="/docs">📄 Docs</a>
+        <a href="/">🖥 Dashboard</a>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="agent-panel">
+        <div class="agent-header">
+          <div class="agent-avatar">AI</div>
+          <div class="agent-info">
+            <h3>Customer Service Agent</h3>
+            <p>Powered by Nova LLM · Governed by AgentGuard HaaS</p>
+          </div>
+        </div>
+
+        <div class="agent-feed" id="feed">
+          <div class="agent-msg system feed-item">
+            <div class="label">System</div>
+            <div>Agent is idle. Click <strong>Run Agent</strong> to start a governed AI workflow. The agent will call Nova LLM for planning, make tool calls across multiple risk tiers, and submit high-risk actions to HaaS governance for human approval.</div>
+          </div>
+        </div>
+
+        <div class="agent-controls">
+          <button class="btn btn-primary" id="startBtn" onclick="runAgent()">▶ Run Agent</button>
+          <button class="btn btn-outline" onclick="resetDemo()">↻ Reset</button>
+          <button class="btn btn-danger" id="cleanupBtn" onclick="cleanupAll()" style="display:none">🗑 Clear All</button>
+        </div>
+      </div>
+
+      <div class="gov-panel">
+        <div class="gov-header">
+          <span>🛡️</span>
+          <h3>HaaS Governance</h3>
+        </div>
+        <div class="gov-body">
+          <div class="gov-stat"><span class="k">Tool Calls</span><span class="v" id="statCalls">0</span></div>
+          <div class="gov-stat"><span class="k">Approved</span><span class="v" id="statApproved" style="color:var(--green)">0</span></div>
+          <div class="gov-stat"><span class="k">Pending Review</span><span class="v" id="statPending" style="color:var(--amber)">0</span></div>
+          <div class="gov-stat"><span class="k">Rejected</span><span class="v" id="statRejected" style="color:var(--red)">0</span></div>
+
+          <div class="gov-section-title">Pending Approvals</div>
+          <div id="govQueue"><p class="empty-state">No pending tasks</p></div>
+
+          <div class="gov-section-title">Activity Log</div>
+          <div id="govLog"><p class="empty-state" id="logEmpty">Waiting for agent to start…</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Reviewer pool — cycles through to avoid duplicates ──
+    const REVIEWERS = [
+      'Sarah Mitchell', 'James Rodriguez', 'Priya Sharma',
+      'David Kim', 'Emily Watson', 'Marcus Johnson',
+      'Aisha Patel', 'Robert Chen', 'Lisa Thompson',
+    ];
+    let rIdx = 0;
+    function nextReviewer() { return REVIEWERS[rIdx++ % REVIEWERS.length]; }
+
+    // ── Tier → number of signatures required ──
+    const SIG_REQUIRED = { LOW: 0, MID: 1, HIGH: 2, CRITICAL: 3 };
+
+    // ── State ──
+    let isRunning = false;
+    let stats = { calls: 0, approved: 0, pending: 0, rejected: 0 };
+    let pendingTasks = new Map(); // requestId → { toolName, tier, cardId, threshold, sigCount, sigNames, resolve }
+
+    const feed = document.getElementById('feed');
+    const govQueue = document.getElementById('govQueue');
+    const govLog = document.getElementById('govLog');
+    const startBtn = document.getElementById('startBtn');
+    const cleanupBtn = document.getElementById('cleanupBtn');
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function ts() { return new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+    function updateStats() {
+      document.getElementById('statCalls').textContent = stats.calls;
+      document.getElementById('statApproved').textContent = stats.approved;
+      document.getElementById('statPending').textContent = stats.pending;
+      document.getElementById('statRejected').textContent = stats.rejected;
+    }
+    function scrollFeed() { feed.scrollTop = feed.scrollHeight; }
+    function addFeedItem(html) {
+      const d = document.createElement('div'); d.className = 'feed-item'; d.innerHTML = html;
+      feed.appendChild(d); scrollFeed(); return d;
+    }
+    function addThinking(t) { return addFeedItem(`<div class="thinking"><div class="dots"><span></span><span></span><span></span></div> ${t}</div>`); }
+    function addAgentMsg(t) { return addFeedItem(`<div class="agent-msg"><div class="label">Agent</div><div>${t}</div></div>`); }
+    function addLLMMsg(t) { return addFeedItem(`<div class="agent-msg llm"><div class="label">Nova LLM</div><div>${t}</div></div>`); }
+    function addGovLog(t, icon = '•') {
+      const e = document.getElementById('logEmpty'); if (e) e.remove();
+      const d = document.createElement('div'); d.className = 'gov-log-entry';
+      d.innerHTML = `<span class="ts">${ts()}</span><span>${icon} ${t}</span>`;
+      govLog.prepend(d);
+    }
+
+    // ── Tool card with signature requirement display ──
+    function addToolCard(toolName, args, tier) {
+      const id = 'tc-' + Date.now();
+      const sigN = SIG_REQUIRED[tier] || 1;
+      const sigLabel = tier === 'LOW'
+        ? '🔓 Auto-approve (read-only)'
+        : `🔒 Requires ${sigN} human signature${sigN > 1 ? 's' : ''}`;
+      addFeedItem(`
+        <div class="tool-card" id="${id}">
+          <div class="tool-card-header">
+            <div class="tool-name"><span class="icon">⚡</span> ${toolName}</div>
+            <span class="tier-badge tier-${tier}">${tier}</span>
+          </div>
+          <div class="tool-args">${JSON.stringify(args, null, 2)}</div>
+          <div class="sig-info">${sigLabel}</div>
+          <div class="tool-status status-waiting" id="${id}-status">
+            <span class="status-dot"></span> Submitting to HaaS…
+          </div>
+        </div>`);
+      return id;
+    }
+
+    function setToolStatus(cardId, cls, html) {
+      const el = document.getElementById(cardId + '-status');
+      if (!el) return;
+      el.className = 'tool-status ' + cls;
+      el.innerHTML = html;
+      scrollFeed();
+    }
+
+    // ── Governance queue ──
+    function addGovTask(requestId, toolName, tier, threshold) {
+      const es = govQueue.querySelector('.empty-state'); if (es) es.remove();
+      const d = document.createElement('div'); d.className = 'gov-task'; d.id = 'gov-' + requestId;
+      d.innerHTML = `
+        <div class="gov-task-name"><span>${toolName}</span><span class="tier-badge tier-${tier}">${tier}</span></div>
+        <div class="gov-task-meta" id="gov-meta-${requestId}">Signatures: <strong>0 / ${threshold}</strong> · Awaiting reviewer</div>
+        <div class="gov-task-sigs" id="gov-sigs-${requestId}"></div>
+        <div class="gov-task-actions" style="margin-top:.6rem;">
+          <a class="gov-btn gov-btn-approve" style="display:block; text-align:center; text-decoration:none;" href="/approve/${requestId}" target="_blank">🛡️ Open Dashboard to Approve</a>
+        </div>`;
+      govQueue.appendChild(d);
+    }
+    function removeGovTask(rid) {
+      const el = document.getElementById('gov-' + rid); if (el) el.remove();
+      if (!govQueue.children.length) govQueue.innerHTML = '<p class="empty-state">No pending tasks</p>';
+    }
+
+    // ── API ──
+    async function apiToolCall(toolName, toolArgs) {
+      const r = await fetch('/mcp/tools/call', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'tools/call', params: { name: toolName, arguments: toolArgs }, agentId: 'nova-agent' }) });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    }
+    // Removed apiApproveCall and submitDecision logic as demo page is now purely a viewer
+
+    // ── Main agent workflow ──
+    async function runAgent() {
+      if (isRunning) return;
+      isRunning = true; rIdx = 0;
+      startBtn.disabled = true; startBtn.textContent = '● Running…';
+      cleanupBtn.style.display = 'none';
+
+      feed.innerHTML = '';
+      govQueue.innerHTML = '<p class="empty-state">No pending tasks</p>';
+      govLog.innerHTML = '<p class="empty-state" id="logEmpty">Waiting for agent to start…</p>';
+      stats = { calls: 0, approved: 0, pending: 0, rejected: 0 };
+      pendingTasks.clear(); updateStats();
+      
+      // Start background sync
+      syncWithBackend();
+
+      try {
+        // ── 1. Start
+        addAgentMsg('Starting task: <strong>Process refund request for Customer #C-2847</strong>');
+        addGovLog('Agent started task', '🚀');
+        await sleep(1200);
+
+        // ── 2. Call Nova LLM
+        const t1 = addThinking('Calling Nova LLM for task planning…');
+        await sleep(2000); t1.remove();
+        addLLMMsg(`<strong>Task Plan Generated:</strong><br>
+          1. Read customer data — <em>LOW risk (auto-approve)</em><br>
+          2. Update case notes — <em>MID risk (1 signature)</em><br>
+          3. Apply loyalty discount — <em>HIGH risk (2 signatures)</em><br>
+          4. Process refund transfer — <em>CRITICAL risk (3 signatures)</em><br><br>
+          <em style="color:var(--fg-dim)">Each tool call is intercepted by AgentGuard HaaS and routed to the appropriate governance tier.</em>`);
+        addGovLog('Nova LLM returned plan (4 steps)', '🧠');
+        await sleep(1500);
+
+        // ── 3. Tool 1: read_customer_data — LOW (auto-approve)
+        addAgentMsg('Step 1: Reading customer record…');
+        await sleep(800);
+        const c1 = addToolCard('read_customer_data', { customer_id: 'C-2847', fields: ['name','email','account_status'] }, 'LOW');
+        stats.calls++; updateStats();
+        addGovLog('read_customer_data → classified LOW', '🔵');
+        await sleep(1000);
+
+        // Make real API call (should auto-approve in backend)
+        try { await apiToolCall('read_customer_data', { customer_id: 'C-2847' }); } catch {}
+        
+        stats.approved++; updateStats();
+        setToolStatus(c1, 'status-auto', '<span class="status-dot"></span> Auto-approved (LOW risk — read-only operation)');
+        addGovLog('read_customer_data → <strong>Auto-approved</strong> (LOW risk, no signature needed)', '✅');
+        await sleep(800);
+
+        // LLM result
+        const t2 = addThinking('Nova LLM analyzing customer data…');
+        await sleep(1500); t2.remove();
+        addLLMMsg('Customer <strong>Sarah Chen</strong> found. Account active since 2019. VIP tier. Refund amount: <strong>$2,340.00</strong> — qualifies for loyalty compensation.');
+        await sleep(1200);
+
+        // ── 4. Tool 2: update_customer_notes — MID (1 signature)
+        addAgentMsg('Step 2: Updating case notes — requires <strong>MID risk</strong> approval (1 signature)…');
+        await sleep(800);
+        const c2 = addToolCard('update_customer_notes', {
+          customer_id: 'C-2847', notes: 'VIP refund. Reason: product defect. Loyalty discount applied.',
+        }, 'MID');
+        stats.calls++; updateStats();
+        addGovLog('update_customer_notes → classified MID (1 sig needed)', '🟡');
+        addAgentMsg('⏸ <em>Agent paused — waiting for human approval…</em>');
+
+        const d2 = await waitForApproval(c2, 'update_customer_notes', {
+          customer_id: 'C-2847', notes: 'VIP refund. Reason: product defect.',
+        }, 'MID');
+
+        if (d2 === 'REJECT') {
+          addAgentMsg('⚠️ Case note update was <strong style="color:var(--red)">rejected</strong>. Workflow paused — manual review required.');
+          addGovLog('Workflow paused (rejection)', '⛔');
+          finishAgent(); return;
+        }
+        addAgentMsg('✅ Case notes updated. Proceeding…');
+        await sleep(1000);
+
+        // ── 5. Nova LLM again
+        const t3 = addThinking('Consulting Nova LLM on discount amount…');
+        await sleep(1800); t3.remove();
+        addLLMMsg('Recommending <strong>15% loyalty discount</strong> ($351.00). This exceeds $200 threshold — requires <strong>HIGH risk</strong> approval (2 signatures).');
+        await sleep(1200);
+
+        // ── 6. Tool 3: apply_discount — HIGH (2 signatures)
+        addAgentMsg('Step 3: Applying loyalty discount — requires <strong>HIGH risk</strong> approval (2 signatures)…');
+        await sleep(800);
+        const c3 = addToolCard('apply_discount', {
+          customer_id: 'C-2847', percentage: 15, amount: 351.00, reason: 'VIP loyalty compensation',
+        }, 'HIGH');
+        stats.calls++; updateStats();
+        addGovLog('apply_discount → classified HIGH (2 sigs needed)', '🟠');
+        addAgentMsg('⏸ <em>Agent paused — waiting for 2 approval signatures…</em>');
+
+        const d3 = await waitForApproval(c3, 'apply_discount', {
+          customer_id: 'C-2847', percentage: 15, amount: 351.00,
+        }, 'HIGH');
+
+        if (d3 === 'REJECT') {
+          addAgentMsg('⚠️ Discount was <strong style="color:var(--red)">rejected</strong>. Skipping to refund transfer.');
+          addGovLog('Discount rejected — skipping', '⛔');
+        } else {
+          addAgentMsg('✅ Discount approved and applied.');
+        }
+        await sleep(1200);
+
+        // ── 7. Nova LLM final
+        const t4 = addThinking('Nova LLM preparing transfer parameters…');
+        await sleep(2000); t4.remove();
+        addLLMMsg(`Ready to execute bank transfer:<br>
+          • From: <strong>Company Operating Account</strong><br>
+          • To: <strong>Sarah Chen (****4829)</strong><br>
+          • Amount: <strong>$2,340.00</strong><br><br>
+          ⚠️ <em style="color:var(--red)">CRITICAL financial operation. Requires 3 multi-signature approvals from finance, security, and legal pools.</em>`);
+        await sleep(1500);
+
+        // ── 8. Tool 4: transfer_funds — CRITICAL (3 signatures)
+        addAgentMsg('Step 4: <strong style="color:var(--red)">Processing refund transfer</strong> — requires <strong>CRITICAL</strong> approval (3 signatures)…');
+        await sleep(800);
+        const c4 = addToolCard('transfer_funds', {
+          from_account: 'company-ops-001', to_account: 'customer-4829',
+          amount: 2340.00, currency: 'USD', memo: 'Refund #RF-28471 — Product defect',
+        }, 'CRITICAL');
+        stats.calls++; updateStats();
+        addGovLog('transfer_funds → classified CRITICAL (3 sigs needed)', '🔴');
+        addAgentMsg('⏸ <em>Agent paused — waiting for 3 multi-signature approvals…</em>');
+
+        const d4 = await waitForApproval(c4, 'transfer_funds', {
+          from_account: 'company-ops-001', to_account: 'customer-4829', amount: 2340.00,
+        }, 'CRITICAL');
+
+        if (d4 === 'REJECT') {
+          addAgentMsg('🚫 Transfer <strong style="color:var(--red)">REJECTED</strong>. Refund cannot be processed. Escalating to management.');
+          addGovLog('Transfer rejected — workflow ended', '⛔');
+        } else {
+          addAgentMsg('✅ Transfer <strong style="color:var(--green)">APPROVED</strong> and executed. $2,340.00 sent to customer.');
+          addGovLog('Transfer approved — funds sent', '💸');
+          await sleep(1000);
+
+          const t5 = addThinking('Nova LLM generating summary…');
+          await sleep(1500); t5.remove();
+          addLLMMsg(`<strong>Task Complete ✅</strong><br><br>
+            Refund of <strong>$2,340.00</strong> processed for Customer #C-2847 (Sarah Chen).<br>
+            Loyalty discount of 15% applied as compensation.<br>
+            All ${stats.calls} tool calls governed by AgentGuard HaaS.<br>
+            ${stats.approved} approvals · ${stats.rejected} rejections · total signatures collected across all tiers.`);
+          addGovLog('Task completed successfully', '🎉');
+        }
+      } catch (err) {
+        addAgentMsg(`<span style="color:var(--red)">Error: ${err.message}</span>`);
+        addGovLog(`Error: ${err.message}`, '⚠️');
+      }
+      finishAgent();
+    }
+
+    // ── Submit tool and BLOCK until multi-sig resolution ──
+    async function waitForApproval(cardId, toolName, toolArgs, tier) {
+      const threshold = SIG_REQUIRED[tier] || 1;
+
+      // 1. Call REAL backend to create the task
+      let apiResult;
+      try {
+        apiResult = await apiToolCall(toolName, toolArgs);
+      } catch (err) {
+        console.error('API Tool Call failed:', err);
+        apiResult = { isError: true, requestId: 'demo-fallback-' + Date.now().toString(36) };
+      }
+
+      // If backend returned an HTTP error (e.g. rate limit, or 50 pending tasks max)
+      if (apiResult.error) {
+        console.error('API returned error:', apiResult.error);
+        // We'll fall back to client-side blocking instead of crashing, but we generate a dummy ID
+        apiResult = { isError: true, requestId: 'demo-fallback-' + Date.now().toString(36) };
+      }
+
+      // Enforce the demo's scripted tier: NEVER auto-approve MID, HIGH, or CRITICAL tasks,
+      // even if the backend says they are LOW (e.g., if user changed policies on the dashboard).
+      // If backend genuinely auto-approved AND the task is scripted as LOW, return early.
+      if (tier === 'LOW' && !apiResult.isError && !apiResult.requestId) {
+        stats.approved++; updateStats();
+        setToolStatus(cardId, 'status-auto', '<span class="status-dot"></span> Auto-approved by backend');
+        addGovLog(`${toolName} → Auto-approved by backend`, '✅');
+        return 'APPROVE';
+      }
+
+      // 2. Use REAL requestId from backend (so it shows in dashboard and audit log)
+      // If the backend auto-approved (but we forced it to block), generate a fallback ID.
+      const requestId = apiResult.requestId || ('demo-forced-' + Date.now().toString(36));
+
+      // Show waiting state — approve/reject via governance panel on the right
+      stats.pending++; updateStats();
+      setToolStatus(cardId, 'status-waiting',
+        `<span class="status-dot"></span> Awaiting ${threshold} signature${threshold > 1 ? 's' : ''} (0/${threshold})…` +
+        `<a class="approve-link" href="/approve/${requestId}" target="_blank">Open approval page →</a>`);
+
+      addGovTask(requestId, toolName, tier, threshold);
+      addGovLog(`${toolName} queued — needs ${threshold} signature${threshold > 1 ? 's' : ''}`, '⏳');
+
+      // 3. Block the agent workflow until ALL signatures are collected or rejected
+      return new Promise(resolve => {
+        pendingTasks.set(requestId, {
+          toolName, tier, cardId, threshold,
+          sigCount: 0, sigNames: [],
+          resolve,
+        });
+      });
+    }
+
+    // ── Backend Real-time Synchronization ──
+    // Polls the backend while the agent is running to see if a user approved the task from the main Dashboard
+    async function syncWithBackend() {
+      if (!isRunning) return;
+      try {
+        const [pendingRes, auditRes] = await Promise.all([
+          fetch('/pending').then(r => r.json()),
+          fetch('/audit/log').then(r => r.json())
+        ]);
+        
+        for (const [requestId, task] of pendingTasks.entries()) {
+          // Check if it's still in the pending queue
+          const backendPending = pendingRes.pending?.find(p => p.request.id === requestId);
+          if (backendPending) {
+            // Update local signature count if someone signed it in the dashboard
+            const signatures = backendPending.signatures || [];
+            if (signatures.length > task.sigCount) {
+              const newSigs = signatures.slice(task.sigCount);
+              task.sigCount = signatures.length;
+              newSigs.forEach(sig => task.sigNames.push(sig.approverId || 'Dashboard User'));
+              
+              const metaEl = document.getElementById('gov-meta-' + requestId);
+              if (metaEl) metaEl.innerHTML = `Signatures: <strong>${task.sigCount} / ${task.threshold}</strong> · Need ${task.threshold - task.sigCount} more`;
+              const sigsEl = document.getElementById('gov-sigs-' + requestId);
+              if (sigsEl) sigsEl.textContent = 'Signed by: ' + task.sigNames.join(', ');
+              
+              setToolStatus(task.cardId, 'status-waiting',
+                `<span class="status-dot"></span> Signature ${task.sigCount}/${task.threshold} — ${task.sigNames.join(', ')}`);
+            }
+            continue;
+          }
+
+          // If not in pending, check if it was fully resolved in the audit log
+          const auditFound = auditRes.entries?.find(e => e.task?.request?.id === requestId);
+          if (auditFound) {
+            const finalState = auditFound.task.state; // 'APPROVED' or 'REJECTED'
+            
+            // Replicate the submitDecision resolution locally
+            stats.pending = Math.max(0, stats.pending - 1);
+            if (finalState === 'APPROVED') stats.approved++; else stats.rejected++;
+            updateStats();
+            removeGovTask(requestId);
+            pendingTasks.delete(requestId);
+
+            // Get final reviewer names
+            const signatures = auditFound.task.signatures || [];
+            const finalNames = signatures.map(s => s.approverId).join(', ') || 'Dashboard User';
+
+            if (finalState === 'APPROVED') {
+              setToolStatus(task.cardId, 'status-approved', `<span class="status-dot"></span> Approved (${task.threshold}/${task.threshold}) by ${finalNames}`);
+              addGovLog(`${task.toolName} → <strong>Fully Approved</strong> by ${finalNames}`, '✅');
+              if (task.resolve) task.resolve('APPROVE');
+            } else {
+              setToolStatus(task.cardId, 'status-rejected', `<span class="status-dot"></span> Rejected by ${finalNames}`);
+              addGovLog(`${task.toolName} → <strong style="color:var(--red)">Rejected</strong> by ${finalNames}`, '❌');
+              if (task.resolve) task.resolve('REJECT');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Sync failed', e);
+      }
+      setTimeout(syncWithBackend, 2500); // Poll every 2.5s
+    }
+
+    function finishAgent() {
+      isRunning = false;
+      startBtn.disabled = false;
+      startBtn.textContent = '▶ Run Agent Again';
+      cleanupBtn.style.display = '';
+    }
+
+    function resetDemo() {
+      if (isRunning) {
+        isRunning = false;
+        pendingTasks.forEach(t => { if (t.resolve) t.resolve('REJECT'); });
+        pendingTasks.clear();
+      }
+      startBtn.disabled = false;
+      startBtn.textContent = '▶ Run Agent';
+      cleanupBtn.style.display = 'none';
+    }
+
+    function cleanupAll() {
+      feed.innerHTML = `<div class="agent-msg system feed-item"><div class="label">System</div>
+        <div>Agent is idle. Click <strong>Run Agent</strong> to start a governed AI workflow.</div></div>`;
+      govQueue.innerHTML = '<p class="empty-state">No pending tasks</p>';
+      govLog.innerHTML = '<p class="empty-state" id="logEmpty">Waiting for agent to start…</p>';
+      stats = { calls: 0, approved: 0, pending: 0, rejected: 0 };
+      pendingTasks.clear(); updateStats();
+      cleanupBtn.style.display = 'none';
+      startBtn.textContent = '▶ Run Agent';
+    }
+  </script>
+</body>
+</html>

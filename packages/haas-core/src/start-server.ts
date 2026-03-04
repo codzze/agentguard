@@ -11,6 +11,7 @@
 
 import { MCPProxyServer } from './mcp/server.js';
 import { MockIdentityProvider, IdentityProviderFactory } from './auth/factory.js';
+import { AIOpsService } from './aiops/feedback-loop.js';
 import type { HaaSCoreConfig } from './types/index.js';
 import type { RiskPolicy } from './types/index.js';
 
@@ -140,13 +141,68 @@ async function main(): Promise<void> {
 
   const server = new MCPProxyServer(config);
 
+  // ── AIOps Feedback Loop ────────────────────────────────────────────
+  const classifier = server.getInterceptor().getClassifier();
+  const aiops = new AIOpsService(classifier, {
+    downgradeThreshold: 50,
+    upgradeThreshold: 5,
+    autoApply: true,
+    protectedTiers: ['CRITICAL'],
+  });
+
+  server.setAIOps(aiops);
+
+  // Wire state machine events to AIOps
+  const sm = server.getInterceptor().getStateMachine();
+  sm.on('request:approved', (bundle: { requestId: string }) => {
+    sm.getState(bundle.requestId).then((t) => {
+      if (t) {
+        aiops.recordApproval(t.request.toolName, t.request.riskTier);
+        server.recordResolved(t);
+      }
+    });
+  });
+
+  sm.on('request:rejected', (response: { requestId: string }) => {
+    sm.getState(response.requestId).then((t) => {
+      if (t) {
+        aiops.recordRejection(t.request.toolName, t.request.riskTier);
+        server.recordResolved(t);
+      }
+    });
+  });
+
+  sm.on('request:timeout', (requestId: string) => {
+    sm.getState(requestId).then((t) => {
+      if (t) {
+        aiops.recordTimeout(t.request.toolName, t.request.riskTier);
+        server.recordResolved(t);
+      }
+    });
+  });
+
+  aiops.on('aiops:tier-adjusted', (toolName: string, adjustment: unknown) => {
+    console.log(`🤖 AIOps: Auto-adjusted risk tier for "${toolName}"`, adjustment);
+  });
+
+  aiops.on('aiops:recommendation-pending', (toolName: string, adjustment: unknown) => {
+    console.log(`⚠️  AIOps: Recommendation pending for "${toolName}" (requires human confirmation)`, adjustment);
+  });
+
+  // ── Start Server ───────────────────────────────────────────────────
   server.on('started', ({ port, host }: { port: number; host: string }) => {
     console.log(`\n🚀 HaaS Core running at http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
     console.log('\nEndpoints:');
-    console.log('  POST /mcp/tools/call  — Intercept tool calls');
-    console.log('  POST /mcp/approve     — Submit approvals');
-    console.log('  GET  /pending         — List pending tasks');
-    console.log('  GET  /health          — Health check');
+    console.log('  POST /mcp/tools/call      — Intercept tool calls');
+    console.log('  POST /mcp/approve         — Submit approvals');
+    console.log('  GET  /pending             — List pending tasks');
+    console.log('  GET  /health              — Health check');
+    console.log('  GET  /settings/policies   — Get risk policies');
+    console.log('  POST /settings/policies   — Update risk policies');
+    console.log('  GET  /settings/providers  — List identity providers');
+    console.log('  GET  /aiops/stats         — AIOps learning stats');
+    console.log('  GET  /audit/log           — Audit log');
+    console.log('  POST /demo/trigger        — Trigger demo scenarios');
     console.log('\n⏳ Waiting for agent tool calls...\n');
   });
 

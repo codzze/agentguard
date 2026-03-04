@@ -32,3 +32,4 @@ coverage/
 
 # Redis dump
 dump.rdb
+.agentguard

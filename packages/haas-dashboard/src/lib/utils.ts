@@ -29,11 +29,11 @@ export function tierColor(tier: string): string {
 
 export function stateColor(state: string): string {
   switch (state) {
-    case 'APPROVED': return 'text-green-400';
-    case 'REJECTED': return 'text-red-400';
-    case 'TIMEOUT': return 'text-yellow-400';
-    case 'WAITING_FOR_HUMAN': return 'text-blue-400';
-    case 'PENDING': return 'text-gray-400';
-    default: return 'text-gray-500';
+    case 'APPROVED': return 'text-emerald-600';
+    case 'REJECTED': return 'text-red-600';
+    case 'TIMEOUT': return 'text-amber-600';
+    case 'WAITING_FOR_HUMAN': return 'text-blue-600';
+    case 'PENDING': return 'text-gray-500';
+    default: return 'text-gray-400';
   }
 }
