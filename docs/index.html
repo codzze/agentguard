@@ -235,7 +235,7 @@
         <a href="#architecture" class="hide-mobile">Architecture</a>
         <a href="#quickstart" class="hide-mobile">Quickstart</a>
         <a href="#api" class="hide-mobile">API</a>
-        <a href="https://github.com/anthropics/agentguard" target="_blank" class="gh-link">
+        <a href="https://github.com/codzze/agentguard" target="_blank" class="gh-link">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           GitHub
         </a>
@@ -248,7 +248,7 @@
   <div class="hero">
     <div class="container">
       <h1>Agent<span>Guard</span></h1>
-      <p>Human-as-a-Service governance layer for AI agents. Risk-based tool call interception with multi-signature approval and credential verification.</p>
+      <p>Human-as-a-Service governance layer for AI agents. Risk-based tool call validation with multi-signature approval and credential verification.</p>
       <div class="hero-badges">
         <span class="badge">🛡️ Risk Classification</span>
         <span class="badge">👥 Multi-Sig Approval</span>
@@ -295,7 +295,7 @@
       <!-- Overview -->
       <section id="overview">
         <h2>Overview</h2>
-        <p>AgentGuard is a <strong>Human-as-a-Service (HaaS)</strong> governance layer that sits between AI agents and their tool calls. It intercepts every MCP tool invocation, classifies risk, and routes high-risk actions to qualified human reviewers for approval before execution.</p>
+        <p>AgentGuard is a <strong>Human-as-a-Service (HaaS)</strong> governance layer that sits between AI agents and their tool calls. It validates every MCP tool invocation, classifies risk, and routes high-risk actions to qualified human reviewers for approval before execution.</p>
 
         <div class="card-grid">
           <div class="card">
@@ -334,7 +334,7 @@
       <!-- Architecture -->
       <section id="architecture">
         <h2>System Architecture</h2>
-        <p>AgentGuard operates as a transparent proxy between AI agents and tool servers. The core intercepts tool calls, classifies risk, and manages the approval lifecycle.</p>
+        <p>AgentGuard operates as a transparent proxy between AI agents and tool servers. The core validates tool calls, classifies risk, and manages the approval lifecycle.</p>
 
         <div class="mermaid">
 graph TB
@@ -344,7 +344,7 @@ graph TB
     end
 
     subgraph AgentGuard Core
-        INT[MCP Interceptor]
+        INT[MCP Tool Validator]
         RC[Risk Classifier]
         SM[State Machine]
         CA[Consensus Aggregator]
@@ -394,7 +394,7 @@ graph TB
             <tr><td><strong>Risk Classifier</strong></td><td><code>classifier/risk-classifier.ts</code></td><td>Policy-driven tool name + argument matching → risk tier</td></tr>
             <tr><td><strong>State Machine</strong></td><td><code>state/state-machine.ts</code></td><td>Request lifecycle: PENDING → WAITING → APPROVED/REJECTED/TIMEOUT</td></tr>
             <tr><td><strong>Consensus</strong></td><td><code>consensus/aggregator.ts</code></td><td>Signature collection, threshold checks, multi-pool quorum</td></tr>
-            <tr><td><strong>MCP Interceptor</strong></td><td><code>mcp/interceptor.ts</code></td><td>Transparent tool call interception and governance routing</td></tr>
+            <tr><td><strong>MCP Tool Validator</strong></td><td><code>mcp/interceptor.ts</code></td><td>Transparent tool call validation and governance routing</td></tr>
             <tr><td><strong>MCP Server</strong></td><td><code>mcp/mcp-server.ts</code></td><td>Official SDK server exposing governance tools</td></tr>
             <tr><td><strong>HTTP Server</strong></td><td><code>mcp/server.ts</code></td><td>REST API for dashboard, approval, and admin operations</td></tr>
             <tr><td><strong>AIOps</strong></td><td><code>aiops/feedback-loop.ts</code></td><td>Auto-tunes risk tiers from approval/rejection patterns</td></tr>
@@ -419,7 +419,7 @@ graph TB
         <div class="mermaid">
 sequenceDiagram
     participant Agent as AI Agent
-    participant MCP as MCP Interceptor
+    participant MCP as MCP Tool Validator
     participant RC as Risk Classifier
     participant SM as State Machine
     participant Human as Human Reviewer
@@ -685,7 +685,7 @@ cd packages/haas-core && npx tsc && cd ../..</code></pre>
             <span class="method method-post">POST</span>
             <span class="endpoint-path">/mcp/tools/call</span>
           </div>
-          <p>Intercept a tool call. Body: <code>{ method, params: { name, arguments } }</code></p>
+          <p>Validate a tool call. Body: <code>{ method, params: { name, arguments } }</code></p>
         </div>
 
         <div class="endpoint">
@@ -835,7 +835,7 @@ cd packages/haas-core && npx tsc && cd ../..</code></pre>
 │   │   │   ├── auth/       # Identity providers
 │   │   │   ├── classifier/ # Risk classification
 │   │   │   ├── consensus/  # Multi-sig consensus
-│   │   │   ├── mcp/        # Interceptor + servers
+│   │   │   ├── mcp/        # Validator + servers
 │   │   │   ├── state/      # State machine + store
 │   │   │   ├── storage/    # Persistent file store
 │   │   │   └── telemetry/  # OpenTelemetry spans

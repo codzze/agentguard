@@ -68,11 +68,12 @@ AgentGuard implements a **decentralized Human-in-the-Loop (HITL) governance** la
 
 **Location**: Private Subnet / VPC  
 **Protocol**: A2A (Agent-to-Agent)  
-**Language**: Python  
+**Language**: Python
 
 The Agent Layer hosts multiple AI agents (Sales, Finance, Legal, etc.) that collaborate via the A2A protocol. Each agent exposes an `AgentCard` at `/.well-known/agent.json` for discovery.
 
 **Responsibilities:**
+
 - Multi-agent task negotiation (e.g., Sales Agent asks Finance Agent to approve a discount)
 - Tool execution via MCP client
 - State preservation during `WAITING_FOR_HUMAN` pause
@@ -81,7 +82,7 @@ The Agent Layer hosts multiple AI agents (Sales, Finance, Legal, etc.) that coll
 **Key Components:**
 | Component | Description |
 |-----------|-------------|
-| `@haas_governed` decorator | Wraps Python functions to intercept critical calls |
+| `@haas_governed` decorator | Wraps Python functions to validate critical calls |
 | `HaaSClient` | HTTP/WebSocket client communicating with haas-core |
 | `ContextPreserver` | Saves agent memory/stack during approval wait |
 | `ExceptionHandler` | Raises `HaaSApprovalDenied` or `HaaSTimeoutError` |
@@ -90,49 +91,56 @@ The Agent Layer hosts multiple AI agents (Sales, Finance, Legal, etc.) that coll
 
 **Location**: Private Subnet / VPC  
 **Protocol**: MCP (Model Context Protocol)  
-**Language**: TypeScript/Node.js  
+**Language**: TypeScript/Node.js
 
-The central governance engine that intercepts, classifies, and orchestrates human approvals.
+The central governance engine that validates, classifies, and orchestrates human approvals.
 
 **Sub-Components:**
 
 #### Risk Classifier Engine
+
 ```
 Input: tool_call metadata (name, args, caller_agent_id)
 Output: RiskTier (LOW | MID | HIGH | CRITICAL)
 ```
+
 - Pattern-matching rules engine
 - Configurable policy files (YAML/JSON)
 - AIOps feedback loop: learns from approval/rejection history
 
 #### State Machine
+
 ```
 States: IDLE → PENDING → WAITING → APPROVED | REJECTED | TIMEOUT | ESCALATED
 ```
+
 - Redis-backed persistence for crash recovery
 - TTL-based automatic timeout
 - Supports concurrent pending requests per agent
 
 #### Consensus Aggregator
+
 ```
 For Tier 3 (High):   threshold = 2, pools = ["finance"]
 For Tier 4 (Critical): threshold = 3, pools = ["finance", "security", "legal"]
 ```
+
 - Collects unique signatures from distinct approver pools
 - Threshold cryptography (optional: Shamir's Secret Sharing)
 - Race condition handling for competing approvers
 
 #### MCP Proxy Server
+
 - Wraps standard MCP tool servers
 - Transparent passthrough for Tier 1 (auto-approve)
-- Interception + pause for Tier 2-4
+- Validation + pause for Tier 2-4
 - Returns `input-required` MCP state during human validation
 
 ### 2.3 Human Approver Pools (P2P Network)
 
 **Location**: Public/DMZ (P2P Relay) + Remote (Reviewer devices)  
 **Protocol**: LibP2P (GossipSub)  
-**Language**: TypeScript  
+**Language**: TypeScript
 
 **Pool Types:**
 | Pool | GossipSub Topic | Tier Access | Typical Validators |
@@ -144,11 +152,13 @@ For Tier 4 (Critical): threshold = 3, pools = ["finance", "security", "legal"]
 | Legal | `haas/legal` | 4 | Legal Counsel |
 
 **Approval Patterns:**
+
 - **Single-Sig (Tier 2)**: First qualified human to verify and sign → approved
 - **Multi-Sig (Tier 3)**: N unique signatures from ONE pool required
 - **Cross-Pool Multi-Sig (Tier 4)**: N signatures from MULTIPLE different pools
 
 **Claim Pattern:**
+
 1. RFA broadcast to relevant topic(s)
 2. Multiple humans receive notification (push, desktop, Slack)
 3. First human to "Claim" the task gets the identity challenge
@@ -158,7 +168,7 @@ For Tier 4 (Critical): threshold = 3, pools = ["finance", "security", "legal"]
 ### 2.4 Identity Adapter Mesh (Pluggable Auth)
 
 **Location**: External / Edge  
-**Pattern**: Strategy Pattern with Factory  
+**Pattern**: Strategy Pattern with Factory
 
 ```typescript
 interface IIdentityProvider {
@@ -182,9 +192,10 @@ interface IIdentityProvider {
 ### 2.5 Observability / Monitoring
 
 **Location**: Shared Management VPC  
-**Protocol**: gRPC (OTel export)  
+**Protocol**: gRPC (OTel export)
 
 **OpenTelemetry Trace Structure:**
+
 ```
 Trace: "HaaS Governance Flow"
 ├── Span: "Agent Tool Call"
@@ -213,6 +224,7 @@ Trace: "HaaS Governance Flow"
 ```
 
 **AIOps Feedback Loop:**
+
 - Rejection patterns feed into Risk Classifier training
 - Historical approval times optimize pool routing
 - Auto-approve recommendations for repeatedly approved low-risk patterns
@@ -244,7 +256,7 @@ sequenceDiagram
     B-->>A: Task State: Submitted (Task ID: 789)
     B->>B: Reasoning: Evaluates 25% discount threshold
 
-    Note over B,RC: [MCP Protocol — Tool Call Interception]
+    Note over B,RC: [MCP Protocol — Tool Call Validation]
     B->>RC: tool_call: apply_discount(amount=25%, value=$50K)
 
     Note over RC: Risk Analysis: amount > $10K → Tier 3
@@ -294,7 +306,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Agent as AI Agent (Python)
-    participant Core as HaaS Interceptor
+    participant Core as HaaS Validator
     participant P2P as P2P Network
     participant Pool as Approver Pool
     participant OTel as OpenTelemetry
@@ -320,7 +332,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Agent as AI Agent (Python)
-    participant Core as HaaS Interceptor
+    participant Core as HaaS Validator
     participant P2P as P2P Network
     participant Pool1 as Primary Pool
     participant Pool2 as Escalation Pool
@@ -441,6 +453,7 @@ sequenceDiagram
 ## 5. Data Models
 
 ### ApprovalRequest (RFA Payload)
+
 ```json
 {
   "id": "uuid-v4",
@@ -462,6 +475,7 @@ sequenceDiagram
 ```
 
 ### ApprovalResponse (Signature Payload)
+
 ```json
 {
   "requestId": "uuid-v4",
@@ -484,6 +498,7 @@ sequenceDiagram
 ```
 
 ### ConsensusBundle (Final Proof)
+
 ```json
 {
   "requestId": "uuid-v4",
@@ -504,6 +519,7 @@ sequenceDiagram
 ## 6. Configuration Schema
 
 ### Risk Policy (YAML)
+
 ```yaml
 policies:
   - tool: "execute_transfer"
@@ -546,11 +562,11 @@ policies:
 
 ## 7. Deployment Considerations
 
-| Aspect | Recommendation |
-|--------|---------------|
-| **Scaling** | HaaS Core: Horizontal (stateless with Redis). P2P Relay: Multiple nodes for redundancy |
-| **High Availability** | Multi-AZ deployment, Redis Cluster, P2P DHT for peer resilience |
-| **Security** | mTLS between agents and core, encrypted P2P channels, JWT validation |
-| **Compliance** | OTel traces exported to immutable storage (S3/GCS), 7-year retention for SOX |
-| **Performance** | Target <100ms for risk classification, <5s for P2P broadcast |
-| **Disaster Recovery** | Task Store snapshots, P2P state rehydration from DHT |
+| Aspect                | Recommendation                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **Scaling**           | HaaS Core: Horizontal (stateless with Redis). P2P Relay: Multiple nodes for redundancy |
+| **High Availability** | Multi-AZ deployment, Redis Cluster, P2P DHT for peer resilience                        |
+| **Security**          | mTLS between agents and core, encrypted P2P channels, JWT validation                   |
+| **Compliance**        | OTel traces exported to immutable storage (S3/GCS), 7-year retention for SOX           |
+| **Performance**       | Target <100ms for risk classification, <5s for P2P broadcast                           |
+| **Disaster Recovery** | Task Store snapshots, P2P state rehydration from DHT                                   |

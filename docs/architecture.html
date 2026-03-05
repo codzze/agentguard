@@ -510,7 +510,7 @@
     </div>
   </div>
   <p>The high-level data flow is:</p>
-  <pre><code>Python Agent → MCP Interceptor → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent</code></pre>
+  <pre><code>Python Agent → MCP Tool Validator → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent</code></pre>
 </section>
 
 <!-- ── ARCHITECTURE DIAGRAM ──────────────────────────── -->
@@ -537,7 +537,7 @@ graph TB
         SM["🔄 State Machine<br/><small>IDLE → APPROVED/REJECTED</small>"]
         CA["🤝 Consensus Aggregator<br/><small>Multi-Sig Threshold</small>"]
         TS["💾 Task Store<br/><small>Redis / In-Memory</small>"]
-        MCP["🔌 MCP Proxy Server<br/><small>Tool Interception</small>"]
+        MCP["🔌 MCP Proxy Server<br/><small>Tool Validation</small>"]
         
         MCP --> RC
         RC --> SM
@@ -601,7 +601,7 @@ graph TB
         <tr><th>Package</th><th>Description</th><th>Language</th><th>Path</th></tr>
       </thead>
       <tbody>
-        <tr><td><code>@agentguard/core</code></td><td>Governance interceptor, risk classifier, P2P node, consensus engine</td><td>TypeScript</td><td><code>packages/haas-core</code></td></tr>
+        <tr><td><code>@agentguard/core</code></td><td>Governance validator, risk classifier, P2P node, consensus engine</td><td>TypeScript</td><td><code>packages/haas-core</code></td></tr>
         <tr><td><code>@agentguard/dashboard</code></td><td>Expert reviewer web application</td><td>React/TypeScript</td><td><code>packages/haas-dashboard</code></td></tr>
         <tr><td><code>agentguard</code> (PyPI)</td><td>Python SDK for AI agent integration</td><td>Python</td><td><code>packages/haas-python-sdk</code></td></tr>
         <tr><td><code>@agentguard/shared-proto</code></td><td>Shared schemas and protocol definitions</td><td>TypeScript</td><td><code>shared-proto</code></td></tr>
@@ -621,7 +621,7 @@ graph TB
     <table>
       <thead><tr><th>Component</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td><code>@haas_governed</code> decorator</td><td>Wraps Python functions to intercept critical tool calls</td></tr>
+        <tr><td><code>@haas_governed</code> decorator</td><td>Wraps Python functions to validate critical tool calls</td></tr>
         <tr><td><code>HaaSClient</code></td><td>HTTP/WebSocket client communicating with haas-core</td></tr>
         <tr><td><code>ContextPreserver</code></td><td>Saves agent memory/stack during approval wait</td></tr>
         <tr><td><code>ExceptionHandler</code></td><td>Raises <code>HaaSApprovalDenied</code> or <code>HaaSTimeoutError</code></td></tr>
@@ -631,7 +631,7 @@ graph TB
   <h4>Python SDK Usage</h4>
   <pre><code><span class="kw">from</span> agentguard <span class="kw">import</span> haas
 
-<span class="cmt"># The decorator intercepts the function call and routes it through HaaS governance</span>
+<span class="cmt"># The decorator validates the function call and routes it through HaaS governance</span>
 <span class="kw">@haas.governed</span>(tier=<span class="str">"critical"</span>, pool=<span class="str">"finance"</span>)
 <span class="kw">async def</span> <span class="fn">execute_wire_transfer</span>(amount: <span class="typ">float</span>, recipient: <span class="typ">str</span>):
     <span class="cmt"># This code only runs if a human approves</span>
@@ -642,7 +642,7 @@ graph TB
 <section id="governance-core">
   <h2><span class="icon">⚙️</span> Governance Core (MCP Server)</h2>
   <p class="section-desc">
-    The central governance engine (TypeScript/Node.js) that intercepts, classifies, and orchestrates
+    The central governance engine (TypeScript/Node.js) that validates, classifies, and orchestrates
     human approvals using the Model Context Protocol (MCP).
   </p>
 
@@ -655,17 +655,17 @@ graph TB
       <ul>
         <li>Wraps standard MCP tool servers</li>
         <li>Transparent passthrough for Tier 1</li>
-        <li>Interception + pause for Tier 2-4</li>
+        <li>Validation + pause for Tier 2-4</li>
         <li>Returns <code>input-required</code> MCP state</li>
       </ul>
     </div>
     <div class="card">
       <div class="card-header">
         <div class="card-icon blue">🔌</div>
-        <div><h4>MCP Interceptor</h4></div>
+        <div><h4>MCP Tool Validator</h4></div>
       </div>
       <ul>
-        <li>Intercepts <code>tool_call</code> payloads</li>
+        <li>Validates <code>tool_call</code> payloads</li>
         <li>Routes to Risk Classifier</li>
         <li>Returns <code>MCPToolResult</code></li>
       </ul>
@@ -1032,7 +1032,7 @@ sequenceDiagram
     end
 
     rect rgba(188, 140, 255, 0.05)
-    Note over B,RC: MCP Protocol — Tool Call Interception
+    Note over B,RC: MCP Protocol — Tool Call Validation
     B->>RC: tool_call: apply_discount(25%)
     Note over RC: Risk Analysis: amount > $10K → Tier 3
     RC->>RA: Escalate (Tier 3, threshold: 2)

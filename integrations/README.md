@@ -48,4 +48,4 @@ finance_agent = Agent(
 
 ## 🤖 OpenClaw / Custom Agents
 
-For custom agents using MCP, simply ensure your tool execution layer calls the governed function. AgentGuard handles the interception and P2P broadcasting automatically.
+For custom agents using MCP, simply ensure your tool execution layer calls the governed function. AgentGuard handles the validation and P2P broadcasting automatically.

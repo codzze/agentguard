@@ -28,7 +28,7 @@ export function Dashboard() {
 
   useEffect(() => {
     loadTasks();
-    const interval = setInterval(loadTasks, 5000);
+    const interval = setInterval(loadTasks, 1500);
     return () => clearInterval(interval);
   }, [loadTasks]);
 

@@ -10,7 +10,7 @@
 // - CORS headers
 // ============================================================================
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -68,20 +68,44 @@ interface RiskPolicy {
 let pendingTasks: Map<string, PendingTask> = new Map();
 let auditEntries: AuditEntry[] = [];
 let policies: RiskPolicy[] = [
-  { tool: 'read_*', tier: 'LOW', autoApprove: true },
-  { tool: 'update_*', tier: 'MID', threshold: 1, pools: ['general'], timeout: '3m' },
-  { tool: 'apply_*', tier: 'HIGH', threshold: 2, pools: ['finance'], timeout: '5m' },
-  { tool: 'transfer_*', tier: 'CRITICAL', threshold: 3, pools: ['finance', 'security', 'legal'], timeout: '15m' },
-  { tool: 'delete_*', tier: 'CRITICAL', threshold: 3, pools: ['engineering', 'security'], timeout: '15m' },
+  { tool: "read_*", tier: "LOW", autoApprove: true },
+  {
+    tool: "update_*",
+    tier: "MID",
+    threshold: 1,
+    pools: ["general"],
+    timeout: "3m",
+  },
+  {
+    tool: "apply_*",
+    tier: "HIGH",
+    threshold: 2,
+    pools: ["finance"],
+    timeout: "5m",
+  },
+  {
+    tool: "transfer_*",
+    tier: "CRITICAL",
+    threshold: 3,
+    pools: ["finance", "security", "legal"],
+    timeout: "15m",
+  },
+  {
+    tool: "delete_*",
+    tier: "CRITICAL",
+    threshold: 3,
+    pools: ["engineering", "security"],
+    timeout: "15m",
+  },
 ];
 let providers: ProviderSetting[] = [
-  { name: 'github', enabled: true },
-  { name: 'linkedin', enabled: true },
-  { name: 'sso', enabled: true },
-  { name: 'oidc', enabled: false },
-  { name: 'okta', enabled: false },
-  { name: 'web3', enabled: false },
-  { name: 'mock', enabled: false },
+  { name: "github", enabled: true },
+  { name: "linkedin", enabled: true },
+  { name: "sso", enabled: true },
+  { name: "oidc", enabled: false },
+  { name: "okta", enabled: false },
+  { name: "web3", enabled: false },
+  { name: "mock", enabled: false },
 ];
 
 // ── Rate Limiter ────────────────────────────────────────────────────────
@@ -96,21 +120,24 @@ const RATE_CLEANUP_INTERVAL = 60_000;
 let lastCleanup = Date.now();
 
 const RATE_LIMITS: Record<string, { max: number; windowMs: number }> = {
-  '/demo/trigger':  { max: 3,  windowMs: 60_000 },   // 3 per min
-  '/mcp/approve':   { max: 20, windowMs: 60_000 },   // 20 per min
-  '/mcp/tools/call':{ max: 20, windowMs: 60_000 },   // 20 per min
-  '/settings':      { max: 10, windowMs: 60_000 },   // 10 per min (writes)
-  'default':        { max: 60, windowMs: 60_000 },   // 60 per min (reads)
+  "/demo/trigger": { max: 10, windowMs: 60_000 }, // 10 per min
+  "/mcp/approve": { max: 60, windowMs: 60_000 }, // 60 per min
+  "/mcp/tools/call": { max: 60, windowMs: 60_000 }, // 60 per min
+  "/settings": { max: 30, windowMs: 60_000 }, // 30 per min (writes)
+  default: { max: 300, windowMs: 60_000 }, // 300 per min (reads)
 };
 
 function getRateLimit(path: string): { max: number; windowMs: number } {
   for (const [prefix, limit] of Object.entries(RATE_LIMITS)) {
     if (path.startsWith(prefix)) return limit;
   }
-  return RATE_LIMITS['default'];
+  return RATE_LIMITS["default"];
 }
 
-function checkRateLimit(ip: string, path: string): { allowed: boolean; remaining: number; resetIn: number } {
+function checkRateLimit(
+  ip: string,
+  path: string,
+): { allowed: boolean; remaining: number; resetIn: number } {
   // Cleanup old entries every minute
   const now = Date.now();
   if (now - lastCleanup > RATE_CLEANUP_INTERVAL) {
@@ -145,7 +172,10 @@ function cleanupStaleTasks(): void {
   const now = Date.now();
   for (const [id, task] of pendingTasks) {
     if (now - task.createdAt > TASK_TTL_MS) {
-      auditEntries.push({ task: { ...task, state: 'TIMEOUT' }, resolvedAt: now });
+      auditEntries.push({
+        task: { ...task, state: "TIMEOUT" },
+        resolvedAt: now,
+      });
       pendingTasks.delete(id);
     }
   }
@@ -157,21 +187,29 @@ function cleanupStaleTasks(): void {
 
 // ── Risk Classifier (simplified) ────────────────────────────────────────
 
-function classifyTool(toolName: string, _args: Record<string, unknown>): {
-  tier: string; policy: RiskPolicy | null; threshold: number; pools: string[];
+function classifyTool(
+  toolName: string,
+  _args: Record<string, unknown>,
+): {
+  tier: string;
+  policy: RiskPolicy | null;
+  threshold: number;
+  pools: string[];
 } {
   for (const policy of policies) {
-    const pattern = policy.tool.replace(/\*/g, '.*');
+    const pattern = policy.tool.replace(/\*/g, ".*");
     if (new RegExp(`^${pattern}$`).test(toolName)) {
       return {
         tier: policy.tier,
         policy,
-        threshold: policy.threshold ?? (policy.tier === 'CRITICAL' ? 3 : policy.tier === 'HIGH' ? 2 : 1),
-        pools: policy.pools ?? ['general'],
+        threshold:
+          policy.threshold ??
+          (policy.tier === "CRITICAL" ? 3 : policy.tier === "HIGH" ? 2 : 1),
+        pools: policy.pools ?? ["general"],
       };
     }
   }
-  return { tier: 'MID', policy: null, threshold: 1, pools: ['general'] };
+  return { tier: "MID", policy: null, threshold: 1, pools: ["general"] };
 }
 
 // ── Request ID Generator ────────────────────────────────────────────────
@@ -184,41 +222,46 @@ function genId(): string {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
   // Get client IP
   const ip =
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ??
-    req.headers['x-real-ip'] as string ??
-    'unknown';
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ??
+    (req.headers["x-real-ip"] as string) ??
+    "unknown";
 
   // Determine the route path from the rewrite query param
-  const route = (req.query._r as string) ?? '/';
+  const route = (req.query._r as string) ?? "/";
 
   // Rate limiting
   const rateCheck = checkRateLimit(ip, route);
-  res.setHeader('X-RateLimit-Remaining', String(rateCheck.remaining));
-  res.setHeader('X-RateLimit-Reset', String(Math.ceil(rateCheck.resetIn / 1000)));
+  res.setHeader("X-RateLimit-Remaining", String(rateCheck.remaining));
+  res.setHeader(
+    "X-RateLimit-Reset",
+    String(Math.ceil(rateCheck.resetIn / 1000)),
+  );
 
   if (!rateCheck.allowed) {
     return res.status(429).json({
-      error: 'Too many requests',
-      message: 'Rate limit exceeded. Please wait before retrying.',
+      error: "Too many requests",
+      message: "Rate limit exceeded. Please wait before retrying.",
       retryAfter: Math.ceil(rateCheck.resetIn / 1000),
     });
   }
 
   // Request body size limit (16KB)
-  if (req.method === 'POST') {
-    const contentLength = parseInt(req.headers['content-length'] ?? '0', 10);
+  if (req.method === "POST") {
+    const contentLength = parseInt(req.headers["content-length"] ?? "0", 10);
     if (contentLength > 16384) {
-      return res.status(413).json({ error: 'Request body too large (max 16KB)' });
+      return res
+        .status(413)
+        .json({ error: "Request body too large (max 16KB)" });
     }
   }
 
@@ -228,46 +271,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Route handling
   try {
     switch (route) {
-      case '/health':
+      case "/health":
         return handleHealth(res);
 
-      case '/pending':
+      case "/pending":
         return handlePending(req, res);
 
-      case '/mcp/tools/call':
-        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+      case "/mcp/tools/call":
+        if (req.method !== "POST")
+          return res.status(405).json({ error: "Method not allowed" });
         return handleToolCall(req, res);
 
-      case '/mcp/approve':
-        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+      case "/mcp/approve":
+        if (req.method !== "POST")
+          return res.status(405).json({ error: "Method not allowed" });
         return handleApprove(req, res);
 
-      case '/demo/trigger':
-        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+      case "/demo/trigger":
+        if (req.method !== "POST")
+          return res.status(405).json({ error: "Method not allowed" });
         return handleDemoTrigger(req, res);
 
-      case '/settings/policies':
-        if (req.method === 'POST') return handleSavePolicies(req, res);
+      case "/settings/policies":
+        if (req.method === "POST") return handleSavePolicies(req, res);
         return handleGetPolicies(res);
 
-      case '/settings/providers':
-        if (req.method === 'POST') return handleSaveProviders(req, res);
+      case "/settings/providers":
+        if (req.method === "POST") return handleSaveProviders(req, res);
         return handleGetProviders(res);
 
-      case '/settings/providers/enabled':
+      case "/settings/providers/enabled":
         return handleGetEnabledProviders(res);
 
-      case '/aiops/stats':
+      case "/aiops/stats":
         return handleAIOpsStats(res);
 
-      case '/audit/log':
+      case "/audit/log":
         return handleAuditLog(res);
 
       default:
-        return res.status(404).json({ error: 'Not found' });
+        return res.status(404).json({ error: "Not found" });
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
     return res.status(500).json({ error: message });
   }
 }
@@ -276,8 +323,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 function handleHealth(res: VercelResponse) {
   return res.status(200).json({
-    status: 'ok',
-    mode: 'vercel-demo',
+    status: "ok",
+    mode: "vercel-demo",
     pendingTasks: pendingTasks.size,
     auditEntries: auditEntries.length,
   });
@@ -285,7 +332,10 @@ function handleHealth(res: VercelResponse) {
 
 function handlePending(_req: VercelRequest, res: VercelResponse) {
   const pending = Array.from(pendingTasks.values()).filter(
-    (t) => t.state === 'WAITING_FOR_HUMAN' || t.state === 'PENDING' || t.state === 'PARTIAL_APPROVAL',
+    (t) =>
+      t.state === "WAITING_FOR_HUMAN" ||
+      t.state === "PENDING" ||
+      t.state === "PARTIAL_APPROVAL",
   );
   return res.status(200).json({ pending });
 }
@@ -293,20 +343,30 @@ function handlePending(_req: VercelRequest, res: VercelResponse) {
 function handleToolCall(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!body?.params?.name) {
-    return res.status(400).json({ error: 'Missing params.name' });
+    return res.status(400).json({ error: "Missing params.name" });
   }
 
   if (pendingTasks.size >= MAX_PENDING_TASKS) {
-    return res.status(503).json({ error: 'Demo task limit reached. Please resolve existing tasks before adding more.' });
+    return res
+      .status(503)
+      .json({
+        error:
+          "Demo task limit reached. Please resolve existing tasks before adding more.",
+      });
   }
 
   const toolName = body.params.name;
   const toolArgs = body.params.arguments ?? {};
   const { tier, threshold, pools } = classifyTool(toolName, toolArgs);
 
-  if (tier === 'LOW') {
+  if (tier === "LOW") {
     return res.status(200).json({
-      content: [{ type: 'text', text: `Tool "${toolName}" executed successfully (auto-approved, LOW risk).` }],
+      content: [
+        {
+          type: "text",
+          text: `Tool "${toolName}" executed successfully (auto-approved, LOW risk).`,
+        },
+      ],
     });
   }
 
@@ -315,8 +375,9 @@ function handleToolCall(req: VercelRequest, res: VercelResponse) {
   const task: PendingTask = {
     request: {
       id: requestId,
-      agentId: body.agentId ?? 'agent-demo',
-      toolName, toolArgs,
+      agentId: body.agentId ?? "agent-demo",
+      toolName,
+      toolArgs,
       riskTier: tier,
       threshold,
       requiredPools: pools,
@@ -324,7 +385,7 @@ function handleToolCall(req: VercelRequest, res: VercelResponse) {
       ttl: 900,
       traceId: requestId,
     },
-    state: 'WAITING_FOR_HUMAN',
+    state: "WAITING_FOR_HUMAN",
     signatures: [],
     createdAt: now,
     updatedAt: now,
@@ -335,7 +396,12 @@ function handleToolCall(req: VercelRequest, res: VercelResponse) {
   pendingTasks.set(requestId, task);
 
   return res.status(200).json({
-    content: [{ type: 'text', text: `Tool "${toolName}" requires ${tier} risk approval (${threshold} signatures from [${pools.join(', ')}]).` }],
+    content: [
+      {
+        type: "text",
+        text: `Tool "${toolName}" requires ${tier} risk approval (${threshold} signatures from [${pools.join(", ")}]).`,
+      },
+    ],
     requestId,
     tier,
     isError: true,
@@ -345,21 +411,25 @@ function handleToolCall(req: VercelRequest, res: VercelResponse) {
 function handleApprove(req: VercelRequest, res: VercelResponse) {
   const { requestId, signature } = req.body ?? {};
   if (!requestId || !signature) {
-    return res.status(400).json({ error: 'Missing requestId or signature' });
+    return res.status(400).json({ error: "Missing requestId or signature" });
   }
 
   const task = pendingTasks.get(requestId);
   if (!task) {
-    return res.status(404).json({ error: 'Request not found or already resolved' });
+    return res
+      .status(404)
+      .json({ error: "Request not found or already resolved" });
   }
 
-  if (signature.decision === 'REJECT') {
-    task.state = 'REJECTED';
+  if (signature.decision === "REJECT") {
+    task.state = "REJECTED";
     task.updatedAt = Date.now();
     task.signatures.push(signature);
     auditEntries.push({ task: { ...task }, resolvedAt: Date.now() });
     pendingTasks.delete(requestId);
-    return res.status(200).json({ consensusReached: false, decision: 'REJECTED', requestId });
+    return res
+      .status(200)
+      .json({ consensusReached: false, decision: "REJECTED", requestId });
   }
 
   task.signatures.push(signature);
@@ -367,58 +437,88 @@ function handleApprove(req: VercelRequest, res: VercelResponse) {
 
   const threshold = task.request.threshold;
   if (task.signatures.length >= threshold) {
-    task.state = 'APPROVED';
+    task.state = "APPROVED";
     auditEntries.push({ task: { ...task }, resolvedAt: Date.now() });
     pendingTasks.delete(requestId);
     return res.status(200).json({ consensusReached: true, requestId });
   }
 
-  task.state = 'PARTIAL_APPROVAL';
-  return res.status(200).json({ consensusReached: false, requestId, signaturesNeeded: threshold - task.signatures.length });
+  task.state = "PARTIAL_APPROVAL";
+  return res
+    .status(200)
+    .json({
+      consensusReached: false,
+      requestId,
+      signaturesNeeded: threshold - task.signatures.length,
+    });
 }
 
 function handleDemoTrigger(req: VercelRequest, res: VercelResponse) {
   if (pendingTasks.size >= MAX_PENDING_TASKS) {
-    return res.status(503).json({ error: 'Demo task limit reached (max 50). Approve or reject existing tasks first.' });
+    return res
+      .status(503)
+      .json({
+        error:
+          "Demo task limit reached (max 50). Approve or reject existing tasks first.",
+      });
   }
 
-  const { scenario = 'all' } = req.body ?? {};
+  const { scenario = "all" } = req.body ?? {};
 
-  const demoScenarios: Record<string, { name: string; args: Record<string, unknown> }[]> = {
-    low: [
-      { name: 'read_customer_data', args: { customer_id: 'cust-001' } },
-    ],
+  const demoScenarios: Record<
+    string,
+    { name: string; args: Record<string, unknown> }[]
+  > = {
+    low: [{ name: "read_customer_data", args: { customer_id: "cust-001" } }],
     mid: [
-      { name: 'update_customer_notes', args: { customer_id: 'cust-001', notes: 'VIP upgrade requested' } },
+      {
+        name: "update_customer_notes",
+        args: { customer_id: "cust-001", notes: "VIP upgrade requested" },
+      },
     ],
     high: [
-      { name: 'apply_discount', args: { customer_id: 'cust-001', percentage: 25 } },
+      {
+        name: "apply_discount",
+        args: { customer_id: "cust-001", percentage: 25 },
+      },
     ],
     critical: [
-      { name: 'transfer_funds', args: { from_account: 'acc-001', to_account: 'acc-002', amount: 50000 } },
+      {
+        name: "transfer_funds",
+        args: { from_account: "acc-001", to_account: "acc-002", amount: 50000 },
+      },
     ],
     all: [
-      { name: 'read_customer_data', args: { customer_id: 'cust-001' } },
-      { name: 'update_customer_notes', args: { customer_id: 'cust-001', notes: 'VIP upgrade requested' } },
-      { name: 'apply_discount', args: { customer_id: 'cust-001', percentage: 25 } },
-      { name: 'transfer_funds', args: { from_account: 'acc-001', to_account: 'acc-002', amount: 50000 } },
+      { name: "read_customer_data", args: { customer_id: "cust-001" } },
+      {
+        name: "update_customer_notes",
+        args: { customer_id: "cust-001", notes: "VIP upgrade requested" },
+      },
+      {
+        name: "apply_discount",
+        args: { customer_id: "cust-001", percentage: 25 },
+      },
+      {
+        name: "transfer_funds",
+        args: { from_account: "acc-001", to_account: "acc-002", amount: 50000 },
+      },
     ],
   };
 
-  const calls = demoScenarios[scenario] ?? demoScenarios['all'];
+  const calls = demoScenarios[scenario] ?? demoScenarios["all"];
   const results: { tool: string; tier: string; status: string }[] = [];
   const now = Date.now();
 
   for (const call of calls) {
     const { tier, threshold, pools } = classifyTool(call.name, call.args);
 
-    if (tier === 'LOW') {
-      results.push({ tool: call.name, tier: 'LOW', status: 'auto-approved' });
+    if (tier === "LOW") {
+      results.push({ tool: call.name, tier: "LOW", status: "auto-approved" });
       continue;
     }
 
     if (pendingTasks.size >= MAX_PENDING_TASKS) {
-      results.push({ tool: call.name, tier, status: 'skipped-limit-reached' });
+      results.push({ tool: call.name, tier, status: "skipped-limit-reached" });
       continue;
     }
 
@@ -426,7 +526,7 @@ function handleDemoTrigger(req: VercelRequest, res: VercelResponse) {
     const task: PendingTask = {
       request: {
         id: requestId,
-        agentId: 'demo-agent',
+        agentId: "demo-agent",
         toolName: call.name,
         toolArgs: call.args,
         riskTier: tier,
@@ -436,7 +536,7 @@ function handleDemoTrigger(req: VercelRequest, res: VercelResponse) {
         ttl: 900,
         traceId: requestId,
       },
-      state: 'WAITING_FOR_HUMAN',
+      state: "WAITING_FOR_HUMAN",
       signatures: [],
       createdAt: now,
       updatedAt: now,
@@ -445,10 +545,12 @@ function handleDemoTrigger(req: VercelRequest, res: VercelResponse) {
     };
 
     pendingTasks.set(requestId, task);
-    results.push({ tool: call.name, tier, status: 'pending-approval' });
+    results.push({ tool: call.name, tier, status: "pending-approval" });
   }
 
-  return res.status(200).json({ message: `Demo triggered: ${scenario}`, results });
+  return res
+    .status(200)
+    .json({ message: `Demo triggered: ${scenario}`, results });
 }
 
 function handleGetPolicies(res: VercelResponse) {
@@ -458,13 +560,15 @@ function handleGetPolicies(res: VercelResponse) {
 function handleSavePolicies(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!Array.isArray(body?.policies)) {
-    return res.status(400).json({ error: 'Expected { policies: [...] }' });
+    return res.status(400).json({ error: "Expected { policies: [...] }" });
   }
   if (body.policies.length > 100) {
-    return res.status(400).json({ error: 'Too many policies (max 100)' });
+    return res.status(400).json({ error: "Too many policies (max 100)" });
   }
   policies = body.policies;
-  return res.status(200).json({ message: 'Policies updated', count: policies.length });
+  return res
+    .status(200)
+    .json({ message: "Policies updated", count: policies.length });
 }
 
 function handleGetProviders(res: VercelResponse) {
@@ -474,13 +578,15 @@ function handleGetProviders(res: VercelResponse) {
 function handleSaveProviders(req: VercelRequest, res: VercelResponse) {
   const body = req.body;
   if (!Array.isArray(body?.providers)) {
-    return res.status(400).json({ error: 'Expected { providers: [...] }' });
+    return res.status(400).json({ error: "Expected { providers: [...] }" });
   }
   if (body.providers.length > 20) {
-    return res.status(400).json({ error: 'Too many providers (max 20)' });
+    return res.status(400).json({ error: "Too many providers (max 20)" });
   }
   providers = body.providers;
-  return res.status(200).json({ message: 'Providers saved', count: providers.length });
+  return res
+    .status(200)
+    .json({ message: "Providers saved", count: providers.length });
 }
 
 function handleGetEnabledProviders(res: VercelResponse) {
@@ -490,10 +596,10 @@ function handleGetEnabledProviders(res: VercelResponse) {
 
 function handleAIOpsStats(res: VercelResponse) {
   const approvedCount = auditEntries.filter(
-    (e) => (e.task as PendingTask)?.state === 'APPROVED',
+    (e) => (e.task as PendingTask)?.state === "APPROVED",
   ).length;
   const rejectedCount = auditEntries.filter(
-    (e) => (e.task as PendingTask)?.state === 'REJECTED',
+    (e) => (e.task as PendingTask)?.state === "REJECTED",
   ).length;
 
   return res.status(200).json({

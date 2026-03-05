@@ -40,14 +40,14 @@ As AI agents evolve from chatbots to autonomous actors with real-world tool acce
 ## 🏗️ Architecture Overview
 
 ```
-Python Agent → MCP Interceptor → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent
+Python Agent → MCP Tool Validator → Risk Classifier → P2P Broadcast → Human Pool → Identity Check → Approve/Reject → Resume/Abort Agent
 ```
 
 | Component           | Technology                                     | Purpose                                              |
 | ------------------- | ---------------------------------------------- | ---------------------------------------------------- |
 | **Agent SDK**       | Python                                         | `@haas_governed` decorator for agent functions       |
 | **Governance Core** | TypeScript/Node.js                             | Risk classification, state machine, consensus engine |
-| **Transport**       | MCP                                            | Agent ↔ Interceptor communication                    |
+| **Transport**       | MCP                                            | Agent ↔ Validator communication                      |
 | **P2P Network**     | LibP2P GossipSub                               | Decentralized approval broadcast                     |
 | **Identity**        | Pluggable (LinkedIn, GitHub, OIDC, Okta, Web3) | Expert verification                                  |
 | **Observability**   | OpenTelemetry                                  | Immutable audit trail                                |
@@ -57,12 +57,12 @@ Python Agent → MCP Interceptor → Risk Classifier → P2P Broadcast → Human
 
 ## 📦 Packages
 
-| Package                    | Description                                       | Language         |
-| -------------------------- | ------------------------------------------------- | ---------------- |
-| `@agentguard/core`         | Governance interceptor, risk classifier, P2P node | TypeScript       |
-| `@agentguard/dashboard`    | Expert reviewer web application                   | React/TypeScript |
-| `@agentguard/shared-proto` | Shared schemas and protocol definitions           | TypeScript       |
-| `agentguard` (PyPI)        | Python SDK for AI agent integration               | Python           |
+| Package                    | Description                                     | Language         |
+| -------------------------- | ----------------------------------------------- | ---------------- |
+| `@agentguard/core`         | Governance validator, risk classifier, P2P node | TypeScript       |
+| `@agentguard/dashboard`    | Expert reviewer web application                 | React/TypeScript |
+| `@agentguard/shared-proto` | Shared schemas and protocol definitions         | TypeScript       |
+| `agentguard` (PyPI)        | Python SDK for AI agent integration             | Python           |
 
 ---
 

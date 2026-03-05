@@ -66,7 +66,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Agent as AI Agent (Python)
-    participant Core as HaaS Interceptor
+    participant Core as HaaS Validator
     participant P2P as P2P Network
     participant Pool as Approver Pool
     participant OTel as OpenTelemetry
@@ -94,7 +94,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Agent as AI Agent (Python)
-    participant Core as HaaS Interceptor
+    participant Core as HaaS Validator
     participant P2P as P2P Network
     participant Pool1 as Primary Pool
     participant Pool2 as Backup Pool
@@ -228,17 +228,17 @@ sequenceDiagram
 
 ## 6. Component Interaction Matrix
 
-| Source | Target | Protocol | Data |
-|--------|--------|----------|------|
-| Python Agent | HaaS Core | MCP / HTTP | ToolCall payload |
-| HaaS Core | Risk Classifier | Internal | Tool metadata |
-| Risk Classifier | State Machine | Internal | RiskTier + Policy |
-| State Machine | Task Store | Redis/Map | PendingTask |
-| State Machine | P2P Node | LibP2P | RFA broadcast |
-| P2P Node | Approver Pools | GossipSub | Encrypted RFA |
-| Reviewer | Identity Provider | OIDC/OAuth | Challenge-Response |
-| Reviewer | P2P Node | GossipSub | Signed Approval |
-| P2P Node | Consensus Engine | Internal | SignatureEntry |
-| Consensus Engine | State Machine | Internal | ConsensusBundle |
-| State Machine | Python Agent | MCP / HTTP | ToolCallResult |
-| All Components | OTel Collector | gRPC | Traces + Events |
+| Source           | Target            | Protocol   | Data               |
+| ---------------- | ----------------- | ---------- | ------------------ |
+| Python Agent     | HaaS Core         | MCP / HTTP | ToolCall payload   |
+| HaaS Core        | Risk Classifier   | Internal   | Tool metadata      |
+| Risk Classifier  | State Machine     | Internal   | RiskTier + Policy  |
+| State Machine    | Task Store        | Redis/Map  | PendingTask        |
+| State Machine    | P2P Node          | LibP2P     | RFA broadcast      |
+| P2P Node         | Approver Pools    | GossipSub  | Encrypted RFA      |
+| Reviewer         | Identity Provider | OIDC/OAuth | Challenge-Response |
+| Reviewer         | P2P Node          | GossipSub  | Signed Approval    |
+| P2P Node         | Consensus Engine  | Internal   | SignatureEntry     |
+| Consensus Engine | State Machine     | Internal   | ConsensusBundle    |
+| State Machine    | Python Agent      | MCP / HTTP | ToolCallResult     |
+| All Components   | OTel Collector    | gRPC       | Traces + Events    |

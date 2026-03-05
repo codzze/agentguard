@@ -6,13 +6,13 @@
 
 ## 📋 Prerequisites
 
-| Tool       | Version  | Check Command            |
-|------------|----------|--------------------------|
-| **Node.js**| ≥ 20.x   | `node --version`         |
-| **npm**    | ≥ 10.x   | `npm --version`          |
-| **Python** | ≥ 3.11   | `python --version`       |
-| **pip**    | latest   | `pip --version`          |
-| **Git**    | any      | `git --version`          |
+| Tool        | Version | Check Command      |
+| ----------- | ------- | ------------------ |
+| **Node.js** | ≥ 20.x  | `node --version`   |
+| **npm**     | ≥ 10.x  | `npm --version`    |
+| **Python**  | ≥ 3.11  | `python --version` |
+| **pip**     | latest  | `pip --version`    |
+| **Git**     | any     | `git --version`    |
 
 > **Optional**: Redis (for production state store). The demo uses an **in-memory store** by default.
 
@@ -33,12 +33,12 @@
                           └───────────────┘
 ```
 
-| Component              | Package                       | Port   | Purpose                          |
-|------------------------|-------------------------------|--------|----------------------------------|
-| **Shared Proto**       | `packages/shared-proto`       | —      | Shared types & JSON schemas      |
-| **Governance Core**    | `packages/haas-core`          | `3100` | MCP proxy, risk engine, state    |
-| **Reviewer Dashboard** | `packages/haas-dashboard`     | `5173` | React UI for human reviewers     |
-| **Python Agent SDK**   | `packages/haas-python-sdk`    | —      | `@governed` decorator for agents |
+| Component              | Package                    | Port   | Purpose                          |
+| ---------------------- | -------------------------- | ------ | -------------------------------- |
+| **Shared Proto**       | `packages/shared-proto`    | —      | Shared types & JSON schemas      |
+| **Governance Core**    | `packages/haas-core`       | `3100` | MCP proxy, risk engine, state    |
+| **Reviewer Dashboard** | `packages/haas-dashboard`  | `5173` | React UI for human reviewers     |
+| **Python Agent SDK**   | `packages/haas-python-sdk` | —      | `@governed` decorator for agents |
 
 ---
 
@@ -72,11 +72,13 @@ npm run build
 ```
 
 **What happens:**
+
 1. `@agentguard/shared-proto` compiles `types.ts` → `dist/`
 2. `@agentguard/core` compiles all TypeScript source → `dist/`
 3. `@agentguard/dashboard` runs `tsc` + `vite build` → `dist/`
 
 > 💡 If you only want to build a specific package:
+>
 > ```cmd
 > cd packages\haas-core
 > npm run build
@@ -94,6 +96,7 @@ pip install -e ".[dev]"
 ```
 
 This installs:
+
 - `httpx`, `websockets`, `pydantic` (runtime)
 - `opentelemetry-api`, `opentelemetry-sdk` (tracing)
 - `pytest`, `ruff`, `mypy` (dev tools)
@@ -121,6 +124,7 @@ npm run dev
 ```
 
 **Expected Output:**
+
 ```
 🛡️  AgentGuard — Starting HaaS Core...
 
@@ -128,7 +132,7 @@ npm run dev
 🚀 HaaS Core running at http://localhost:3100
 
 Endpoints:
-  POST /mcp/tools/call  — Intercept tool calls
+  POST /mcp/tools/call  — Validate tool calls
   POST /mcp/approve     — Submit approvals
   GET  /pending         — List pending tasks
   GET  /health          — Health check
@@ -137,6 +141,7 @@ Endpoints:
 ```
 
 **Verify it's running:**
+
 ```cmd
 curl http://localhost:3100/health
 ```
@@ -151,6 +156,7 @@ npm run dev
 ```
 
 **Expected Output:**
+
 ```
   VITE v5.4.x  ready in 300ms
 
@@ -172,6 +178,7 @@ python examples\quick_start.py
 ```
 
 **Expected Output:**
+
 ```
 === AgentGuard Quick Start ===
 
@@ -189,11 +196,13 @@ The agent **pauses** at step 2, waiting for a human to approve via the Dashboard
 ### Step 7: Approve via Dashboard or API
 
 #### Option A: Dashboard UI
-1. Open **http://localhost:5173** 
+
+1. Open **http://localhost:5173**
 2. You'll see the pending approval request
 3. Click **Approve** to release the agent
 
 #### Option B: REST API (curl)
+
 ```cmd
 curl -X POST http://localhost:3100/mcp/approve ^
   -H "Content-Type: application/json" ^
@@ -201,6 +210,7 @@ curl -X POST http://localhost:3100/mcp/approve ^
 ```
 
 #### Option C: Check Pending Tasks First
+
 ```cmd
 curl http://localhost:3100/pending
 ```
@@ -212,23 +222,27 @@ This returns all pending RFA payloads with their IDs.
 ## 🧪 Running Tests
 
 ### TypeScript Tests (haas-core)
+
 ```cmd
 cd packages\haas-core
 npm test
 ```
 
 Or from root (runs all test suites via Turborepo):
+
 ```cmd
 npm test
 ```
 
 ### Python Tests (SDK)
+
 ```cmd
 cd packages\haas-python-sdk
 pytest
 ```
 
 Or with verbose output:
+
 ```cmd
 pytest -v
 ```
@@ -238,6 +252,7 @@ pytest -v
 ## 🔀 All-in-One Quick Start (3 Terminals)
 
 ### Terminal 1 — Core Server
+
 ```cmd
 cd agentguard
 npm install
@@ -247,12 +262,14 @@ npx ts-node ..\..\examples\server_start.ts
 ```
 
 ### Terminal 2 — Dashboard
+
 ```cmd
 cd agentguard\packages\haas-dashboard
 npm run dev
 ```
 
 ### Terminal 3 — Python Agent
+
 ```cmd
 cd agentguard\packages\haas-python-sdk
 pip install -e .
@@ -265,21 +282,25 @@ python examples\quick_start.py
 ## 📁 Demo Walkthrough
 
 ### Scenario 1: LOW Risk (Auto-Approve)
+
 - **Action**: `read_customer_data("cust-001")`
 - **What happens**: Passes through immediately, logged in OTel
 - **Dashboard**: Shows in audit log but no approval needed
 
 ### Scenario 2: MID Risk (Single-Sig)
+
 - **Action**: `update_customer_notes("cust-001", "VIP")`
 - **What happens**: Agent pauses, RFA appears in Dashboard
 - **Approve**: One click in Dashboard → agent resumes
 
 ### Scenario 3: HIGH Risk (Multi-Sig)
+
 - **Action**: `apply_discount("cust-001", 25.0)` — threshold: 2
 - **What happens**: Agent pauses, needs 2 approvals from finance pool
 - **Approve**: Submit 2 separate approvals → agent resumes
 
 ### Scenario 4: CRITICAL Risk (Cross-Pool)
+
 - **Action**: `transfer_funds("acc-001", "acc-002", 50000.0)` — threshold: 3
 - **What happens**: Agent pauses, needs approvals from finance + security + legal
 - **Approve**: Submit 3 approvals from different pools → agent resumes
@@ -289,6 +310,7 @@ python examples\quick_start.py
 ## ⚙️ Configuration
 
 ### Risk Policies
+
 Edit `config/risk-policies.example.yml` to customize which tools require approval:
 
 ```yaml
@@ -301,22 +323,24 @@ policies:
 ```
 
 ### Core Server Config
+
 The server configuration is in `examples/server_start.ts`:
 
 ```typescript
 const config: HaaSCoreConfig = {
-  policies: { policies },       // YAML policy file
-  identity: ['mock', 'github'], // Identity providers
-  port: 3100,                   // Server port
-  inMemoryStore: true,          // Use in-memory (no Redis)
+  policies: { policies }, // YAML policy file
+  identity: ["mock", "github"], // Identity providers
+  port: 3100, // Server port
+  inMemoryStore: true, // Use in-memory (no Redis)
   telemetry: {
-    endpoint: 'http://localhost:4317',
-    serviceName: 'agentguard-core',
+    endpoint: "http://localhost:4317",
+    serviceName: "agentguard-core",
   },
 };
 ```
 
 ### Python SDK Config
+
 Configure in your agent code:
 
 ```python
@@ -334,18 +358,18 @@ configure(HaaSConfig(
 
 ## 🐛 Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| `npm install` fails | Ensure Node.js ≥ 20 and npm ≥ 10. Run `node --version` |
-| `turbo` not found | Run `npm install` at root to install turbo as devDependency |
-| `ts-node` not found | Install globally: `npm install -g ts-node typescript` |
-| Port 3100 in use | Change `port` in `examples/server_start.ts` or kill the process |
-| Port 5173 in use | Vite auto-picks next port, or set in `vite.config.ts` |
-| Python `ModuleNotFoundError` | Run `pip install -e .` in `packages/haas-python-sdk` |
-| `pip install -e ".[dev]"` fails | Try `pip install -e .` (without dev extras) |
+| Issue                            | Solution                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------- |
+| `npm install` fails              | Ensure Node.js ≥ 20 and npm ≥ 10. Run `node --version`                    |
+| `turbo` not found                | Run `npm install` at root to install turbo as devDependency               |
+| `ts-node` not found              | Install globally: `npm install -g ts-node typescript`                     |
+| Port 3100 in use                 | Change `port` in `examples/server_start.ts` or kill the process           |
+| Port 5173 in use                 | Vite auto-picks next port, or set in `vite.config.ts`                     |
+| Python `ModuleNotFoundError`     | Run `pip install -e .` in `packages/haas-python-sdk`                      |
+| `pip install -e ".[dev]"` fails  | Try `pip install -e .` (without dev extras)                               |
 | Dashboard shows no pending tasks | Ensure Core is running on 3100, check `curl http://localhost:3100/health` |
-| Agent connects but times out | Increase `default_timeout_seconds` in Python config |
-| Build errors in shared-proto | Build it first: `cd packages\shared-proto && npm run build` |
+| Agent connects but times out     | Increase `default_timeout_seconds` in Python config                       |
+| Build errors in shared-proto     | Build it first: `cd packages\shared-proto && npm run build`               |
 
 ---
 
@@ -362,6 +386,7 @@ docker run -d --name jaeger ^
 ```
 
 Then open **http://localhost:16686** to see distributed traces spanning:
+
 - Python Agent → HaaS Core → P2P Broadcast → Human Approval → Resume
 
 ---
@@ -375,11 +400,12 @@ docker run -d --name redis -p 6379:6379 redis:latest
 ```
 
 Then update config:
+
 ```typescript
 const config: HaaSCoreConfig = {
   // ...
-  redis: 'redis://localhost:6379',
-  inMemoryStore: false,  // Use Redis
+  redis: "redis://localhost:6379",
+  inMemoryStore: false, // Use Redis
 };
 ```
 
@@ -387,17 +413,17 @@ const config: HaaSCoreConfig = {
 
 ## 📂 Summary of Commands
 
-| What                     | Command                                          |
-|--------------------------|--------------------------------------------------|
-| Install all deps         | `npm install`                                    |
-| Build everything         | `npm run build`                                  |
-| Start Core server        | `npx ts-node examples\server_start.ts`           |
-| Start Dashboard          | `cd packages\haas-dashboard && npm run dev`      |
-| Install Python SDK       | `cd packages\haas-python-sdk && pip install -e .` |
-| Run Python agent         | `python examples\quick_start.py`                 |
-| Run TS tests             | `npm test`                                       |
-| Run Python tests         | `cd packages\haas-python-sdk && pytest`          |
-| Check health             | `curl http://localhost:3100/health`               |
-| List pending approvals   | `curl http://localhost:3100/pending`              |
-| Clean build artifacts    | `npm run clean`                                  |
-| Format code              | `npm run format`                                 |
+| What                   | Command                                           |
+| ---------------------- | ------------------------------------------------- |
+| Install all deps       | `npm install`                                     |
+| Build everything       | `npm run build`                                   |
+| Start Core server      | `npx ts-node examples\server_start.ts`            |
+| Start Dashboard        | `cd packages\haas-dashboard && npm run dev`       |
+| Install Python SDK     | `cd packages\haas-python-sdk && pip install -e .` |
+| Run Python agent       | `python examples\quick_start.py`                  |
+| Run TS tests           | `npm test`                                        |
+| Run Python tests       | `cd packages\haas-python-sdk && pytest`           |
+| Check health           | `curl http://localhost:3100/health`               |
+| List pending approvals | `curl http://localhost:3100/pending`              |
+| Clean build artifacts  | `npm run clean`                                   |
+| Format code            | `npm run format`                                  |

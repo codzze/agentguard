@@ -877,7 +877,7 @@
 
         // Start background sync (clear any prior interval first)
         stopSync();
-        syncIntervalId = setInterval(syncWithBackend, 2500);
+        syncIntervalId = setInterval(syncWithBackend, 1000);
 
         // Helper: check if this run was cancelled by reset
         function cancelled() {
@@ -903,7 +903,7 @@
           2. Update case notes — <em>MID risk (1 signature)</em><br>
           3. Apply loyalty discount — <em>HIGH risk (2 signatures)</em><br>
           4. Process refund transfer — <em>CRITICAL risk (3 signatures)</em><br><br>
-          <em style="color:var(--fg-dim)">Each tool call is intercepted by AgentGuard HaaS and routed to the appropriate governance tier.</em>`);
+          <em style="color:var(--fg-dim)">Each tool call is validated by AgentGuard HaaS and routed to the appropriate governance tier.</em>`);
           addGovLog("Nova LLM returned plan (4 steps)", "🧠");
           await sleep(1500);
           if (cancelled()) return;

@@ -18,7 +18,7 @@ Health check.
 
 ### `POST /mcp/tools/call`
 
-Intercept a tool call for risk classification and governance.
+Validate a tool call for risk classification and governance.
 
 **Request:**
 
