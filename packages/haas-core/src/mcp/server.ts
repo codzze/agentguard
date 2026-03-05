@@ -157,16 +157,55 @@ export class MCPProxyServer extends EventEmitter {
     const body = await this.readBody(req);
     const toolCall: MCPToolCall = JSON.parse(body);
 
-    // The "upstream" execute function — in a real deployment this would forward
-    // to the actual MCP server. Here we return a placeholder.
-    const executeFn = async (call: MCPToolCall): Promise<MCPToolResult> => {
-      return {
-        content: [{ type: 'text', text: `Tool "${call.params.name}" executed successfully.` }],
-      };
-    };
+    const toolName = toolCall.params.name;
+    const toolArgs = toolCall.params.arguments ?? {};
 
-    const result = await this.interceptor.intercept(toolCall, executeFn);
-    this.sendJSON(res, result.isError ? 403 : 200, result);
+    // Classify the tool risk
+    const classification = this.interceptor.getClassifier().classify(toolName, toolArgs);
+
+    // LOW risk → execute immediately (auto-approve)
+    if (classification.tier === 'LOW') {
+      const executeFn = async (call: MCPToolCall): Promise<MCPToolResult> => ({
+        content: [{ type: 'text', text: `Tool "${call.params.name}" executed successfully.` }],
+      });
+      const result = await this.interceptor.intercept(toolCall, executeFn);
+      this.sendJSON(res, 200, result);
+      return;
+    }
+
+    // MID/HIGH/CRITICAL → create the pending task and return immediately
+    // The intercept call blocks on waitForResolution, so we fire-and-forget it
+    const executeFn = async (call: MCPToolCall): Promise<MCPToolResult> => ({
+      content: [{ type: 'text', text: `Tool "${call.params.name}" executed successfully.` }],
+    });
+
+    // Start intercept in background (it will block waiting for human approval)
+    this.interceptor.intercept(toolCall, executeFn).catch(() => {});
+
+    // Give the state machine a tick to create the request
+    await new Promise(r => setTimeout(r, 100));
+
+    // Find the requestId that was just created
+    const sm = this.interceptor.getStateMachine();
+    const pending = await sm.listPending();
+    const justCreated = pending.find(
+      (t) => t.request.toolName === toolName &&
+             t.state !== 'APPROVED' && t.state !== 'REJECTED'
+    );
+
+    const requestId = justCreated?.request?.id ?? `req-${Date.now().toString(36)}`;
+    const threshold = classification.policy?.threshold ??
+      (classification.tier === 'CRITICAL' ? 3 : classification.tier === 'HIGH' ? 2 : 1);
+    const pools = classification.policy?.pools ?? ['general'];
+
+    this.sendJSON(res, 200, {
+      content: [{ type: 'text', text: `Tool "${toolName}" requires ${classification.tier} risk approval (${threshold} signatures from [${pools.join(', ')}]).` }],
+      requestId,
+      tier: classification.tier,
+      threshold,
+      requiredPools: pools,
+      isError: true,
+    });
   }
 
   private async handleStatusQuery(url: URL, res: http.ServerResponse): Promise<void> {

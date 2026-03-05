@@ -27,6 +27,7 @@ export function RequestCard({ task, onActionComplete }: RequestCardProps) {
         'dashboard-reviewer',
         request.requiredPools[0] ?? 'general',
         decision,
+        request.threshold,
         reason || undefined,
       );
       setActionTaken(decision);

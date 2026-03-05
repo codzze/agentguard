@@ -7,7 +7,7 @@ import {
 import { submitApproval, fetchEnabledProviders, type PendingTask, type ProviderDTO } from '../lib/api';
 import { cn, tierColor, formatRelativeTime } from '../lib/utils';
 
-type AuthStep = 'authenticate' | 'verify-skills' | 'review' | 'skill-mismatch' | 'done';
+type AuthStep = 'authenticate' | 'verify-skills' | 'review' | 'skill-mismatch' | 'partial' | 'done';
 type AuthProvider = string;
 
 const PROVIDER_UI: Record<string, { name: string; icon: typeof Linkedin; color: string }> = {
@@ -28,6 +28,19 @@ const SKILL_POOL_MAP: Record<string, string[]> = {
   executive: ['Strategic Planning', 'Executive Oversight', 'Risk Management'],
   general: ['General Approval'],
 };
+
+const DEMO_REVIEWERS = [
+  'Alex Johnson',
+  'Sarah Mitchell',
+  'James Rodriguez',
+  'Priya Sharma',
+  'David Kim',
+  'Emily Watson',
+  'Marcus Johnson',
+  'Aisha Patel',
+  'Robert Chen',
+  'Lisa Thompson',
+];
 
 /**
  * Approval Page — Separate page for SME/specialist credential verification.
@@ -53,6 +66,8 @@ export function ApprovePage() {
   const [decision, setDecision] = useState<'APPROVE' | 'REJECT' | null>(null);
   const [simulateMismatch, setSimulateMismatch] = useState(false);
   const [enabledProviders, setEnabledProviders] = useState<ProviderDTO[]>([]);
+  const [signaturesNeeded, setSignaturesNeeded] = useState<number | null>(null);
+  const [demoReviewer, setDemoReviewer] = useState(DEMO_REVIEWERS[0]);
 
   // Simulated authenticated user
   const [authenticatedUser, setAuthenticatedUser] = useState<{
@@ -116,15 +131,18 @@ export function ApprovePage() {
     } else {
       // Simulate a user who has the right skills
       const matchedSkills = requiredPools.flatMap((p) => SKILL_POOL_MAP[p]?.slice(0, 2) ?? []);
+      const firstName = demoReviewer.split(' ')[0];
+      const lastName = demoReviewer.split(' ')[1] ?? '';
+      
       setAuthenticatedUser({
-        name: 'Alex Johnson',
-        email: 'alex.johnson@company.com',
+        name: demoReviewer,
+        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@company.com`,
         provider: PROVIDER_UI[provider]?.name ?? provider,
         skills: matchedSkills.length > 0 ? matchedSkills : ['General Approval'],
         missingSkills: [],
         seniority: 'Senior',
         org: 'Acme Corp',
-        avatar: `https://ui-avatars.com/api/?name=Alex+Johnson&background=3b82f6&color=fff&size=80`,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(demoReviewer)}&background=3b82f6&color=fff&size=80`,
         skillsMatch: true,
       });
       setIsVerifying(false);
@@ -147,14 +165,28 @@ export function ApprovePage() {
     setDecision(action);
 
     try {
-      await submitApproval(
+      const result = await submitApproval(
         requestId,
         authenticatedUser.email,
         task?.request.requiredPools[0] ?? 'general',
         action,
+        task?.request.threshold ?? 1,
         reason || undefined,
       );
-      setStep('done');
+
+      if (action === 'REJECT') {
+        // Rejection always resolves immediately
+        setStep('done');
+        setTimeout(() => window.close(), 1500);
+      } else if (result.consensusReached) {
+        // All required signatures collected
+        setStep('done');
+        setTimeout(() => window.close(), 1500);
+      } else {
+        // Partial approval — more signatures needed
+        setSignaturesNeeded(result.signaturesNeeded ?? null);
+        setStep('partial');
+      }
     } catch {
       setError('Failed to submit decision');
     } finally {
@@ -274,6 +306,22 @@ export function ApprovePage() {
             <p className="text-xs text-gray-500 mb-4">
               Sign in with your credential provider to verify your identity before reviewing this request.
             </p>
+
+            {/* Demo Approver Selection */}
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Select Demo Approver
+              </label>
+              <select
+                value={demoReviewer}
+                onChange={(e) => setDemoReviewer(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              >
+                {DEMO_REVIEWERS.map(reviewer => (
+                  <option key={reviewer} value={reviewer}>{reviewer}</option>
+                ))}
+              </select>
+            </div>
 
             {/* Demo toggle for skill mismatch */}
             <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
@@ -513,6 +561,33 @@ export function ApprovePage() {
                   <XCircle className="h-4 w-4" />
                 )}
                 Reject
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3b: Partial Approval — More Signatures Needed */}
+        {step === 'partial' && authenticatedUser && (
+          <div className="card text-center py-8">
+            <CheckCircle className="h-12 w-12 text-amber-500 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-gray-900">
+              Signature Recorded
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Your approval has been recorded, but this <strong>{task.request.riskTier}</strong> risk
+              request requires <strong>{task.request.threshold}</strong> total signatures.
+            </p>
+            {signaturesNeeded !== null && (
+              <p className="text-sm text-amber-600 font-medium mt-2">
+                {signaturesNeeded} more signature{signaturesNeeded > 1 ? 's' : ''} needed to reach consensus.
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-3">
+              Signed by {authenticatedUser.name} via {authenticatedUser.provider}
+            </p>
+            <div className="mt-4 flex gap-2 justify-center">
+              <button onClick={() => navigate('/')} className="btn-primary">
+                Back to Dashboard
               </button>
             </div>
           </div>

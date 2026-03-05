@@ -85,14 +85,15 @@ export async function submitApproval(
   approverId: string,
   pool: string,
   decision: 'APPROVE' | 'REJECT',
+  threshold: number,
   reason?: string,
-): Promise<{ consensusReached: boolean }> {
+): Promise<{ consensusReached: boolean; signaturesNeeded?: number }> {
   const res = await fetch(`${BASE_URL}/approve`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       requestId,
-      threshold: 1,
+      threshold,
       signature: {
         approverId,
         pool,
