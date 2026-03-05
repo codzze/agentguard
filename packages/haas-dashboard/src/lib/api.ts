@@ -139,6 +139,13 @@ export async function savePolicies(policies: RiskPolicyDTO[]): Promise<{ message
   return res.json();
 }
 
+export async function clearAuditLog(): Promise<{ message: string }> {
+  const res = await fetch('/audit/log', {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
 export async function fetchProviders(): Promise<ProviderDTO[]> {
   const res = await fetch('/settings/providers');
   const data = await res.json();

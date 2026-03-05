@@ -5,7 +5,7 @@ import type { HaaSCoreConfig, RiskPolicy } from '../types/index.js';
 import type { AIOpsService } from '../aiops/feedback-loop.js';
 import {
   loadProviders, saveProviders, type ProviderSetting,
-  loadAuditLog, appendAuditEntry, getAuditEntries, type AuditRecord,
+  loadAuditLog, appendAuditEntry, getAuditEntries, clearAuditLog, type AuditRecord,
   savePolicies as persistPolicies,
 } from '../storage/persistent-store.js';
 
@@ -144,6 +144,8 @@ export class MCPProxyServer extends EventEmitter {
         this.handleGetAIOpsStats(res);
       } else if (method === 'GET' && url.pathname === '/audit/log') {
         this.handleGetAuditLog(res);
+      } else if (method === 'DELETE' && url.pathname === '/audit/log') {
+        this.handleClearAuditLog(res);
       } else {
         this.sendJSON(res, 404, { error: 'Not found' });
       }
@@ -259,17 +261,19 @@ export class MCPProxyServer extends EventEmitter {
     // Handle approval signature
     const result = await this.interceptor.submitSignature(requestId, signature, threshold ?? 1);
 
-    // Record to audit log
+    // Record to audit log only if fully resolved
     const task = await sm.getState(requestId);
-    if (task) {
-      this.recordResolved(task);
-    } else {
-      this.recordResolved({
-        request: { id: requestId, toolName: 'unknown', riskTier: 'UNKNOWN' },
-        state: result.consensusReached ? 'APPROVED' : 'PARTIAL_APPROVAL',
-        signatures: [signature],
-        consensusReached: result.consensusReached,
-      });
+    if (result.consensusReached) {
+      if (task) {
+        this.recordResolved(task);
+      } else {
+        this.recordResolved({
+          request: { id: requestId, toolName: 'unknown', riskTier: 'UNKNOWN' },
+          state: 'APPROVED',
+          signatures: [signature],
+          consensusReached: true,
+        });
+      }
     }
 
     this.sendJSON(res, 200, result);
@@ -411,6 +415,12 @@ export class MCPProxyServer extends EventEmitter {
     // Return from persistent storage
     const entries = getAuditEntries(100);
     this.sendJSON(res, 200, { entries });
+  }
+
+  private handleClearAuditLog(res: http.ServerResponse): void {
+    clearAuditLog();
+    this.auditEntries = [];
+    this.sendJSON(res, 200, { message: 'Audit log cleared' });
   }
 
   /**

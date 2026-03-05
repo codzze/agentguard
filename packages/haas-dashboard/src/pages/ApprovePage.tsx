@@ -315,7 +315,7 @@ export function ApprovePage() {
               <select
                 value={demoReviewer}
                 onChange={(e) => setDemoReviewer(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                className="w-full rounded-md border border-gray-700 px-3 py-2 text-sm bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               >
                 {DEMO_REVIEWERS.map(reviewer => (
                   <option key={reviewer} value={reviewer}>{reviewer}</option>

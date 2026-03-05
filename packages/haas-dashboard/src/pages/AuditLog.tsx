@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search } from 'lucide-react';
-import { fetchAuditLog, type AuditEntry } from '../lib/api';
+import { Search, Trash2 } from 'lucide-react';
+import { fetchAuditLog, clearAuditLog as clearAuditLogAPI, type AuditEntry } from '../lib/api';
 import { cn, tierColor } from '../lib/utils';
 
 /**
@@ -23,6 +23,16 @@ export function AuditLog() {
       setIsLoading(false);
     }
   }, []);
+
+  const handleClearLog = async () => {
+    if (!window.confirm('Are you sure you want to clear the audit log? This cannot be undone.')) return;
+    try {
+      await clearAuditLogAPI();
+      setEntries([]);
+    } catch {
+      // API not available
+    }
+  };
 
   useEffect(() => {
     loadEntries();
@@ -72,16 +82,26 @@ export function AuditLog() {
         </p>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by tool name, agent, or ID…"
-          className="input-field pl-9"
-        />
+      {/* Top Bar: Search + Clear */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative max-w-md w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by tool name, agent, or ID…"
+            className="input-field pl-9"
+          />
+        </div>
+        <button
+          onClick={handleClearLog}
+          className="btn-reject flex items-center gap-2 whitespace-nowrap"
+          title="Clear Audit Log"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Clear Log</span>
+        </button>
       </div>
 
       {/* Table */}

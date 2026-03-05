@@ -94,3 +94,7 @@ export function getAuditEntries(limit: number = 100): AuditRecord[] {
   const log = loadAuditLog();
   return log.slice(-limit);
 }
+
+export function clearAuditLog(): void {
+  writeJSON('audit-log', []);
+}

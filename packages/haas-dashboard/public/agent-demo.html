@@ -583,6 +583,23 @@
         font-style: italic;
       }
 
+      .clear-logs-btn {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--fg-muted);
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: var(--sans);
+      }
+      .clear-logs-btn:hover {
+        border-color: var(--fg-muted);
+        color: var(--fg);
+        background: var(--bg);
+      }
+
       @media (max-width: 800px) {
         .main {
           flex-direction: column;
@@ -693,7 +710,10 @@
               >
             </div>
 
-            <div class="gov-section-title">Activity Log</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <div class="gov-section-title" style="margin-bottom: 0;">Activity Log</div>
+              <button class="clear-logs-btn" onclick="clearGovLog()">Clear Logs</button>
+            </div>
             <div id="govLog">
               <p class="empty-state" id="logEmpty">
                 Waiting for agent to start…
@@ -1303,6 +1323,10 @@
         startBtn.disabled = false;
         startBtn.textContent = "▶ Run Agent Again";
         cleanupBtn.style.display = "";
+      }
+
+      function clearGovLog() {
+        govLog.innerHTML = '<p class="empty-state" id="logEmpty">No recent activity</p>';
       }
 
       function resetDemo() {
