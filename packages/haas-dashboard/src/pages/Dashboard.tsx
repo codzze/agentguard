@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { RefreshCw, ExternalLink, Clock, Copy, Check } from "lucide-react";
 import { fetchPendingTasks, type PendingTask } from "../lib/api";
 import { cn, tierColor } from "../lib/utils";
@@ -13,12 +13,21 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
+  const emptyPolls = useRef(0);
 
   const loadTasks = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
       const data = await fetchPendingTasks();
-      setTasks(data);
+      if (data.length === 0) {
+        emptyPolls.current += 1;
+        if (emptyPolls.current >= 5) {
+          setTasks([]);
+        }
+      } else {
+        emptyPolls.current = 0;
+        setTasks(data);
+      }
     } catch {
       // API not available
     } finally {
