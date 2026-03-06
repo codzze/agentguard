@@ -14,21 +14,21 @@ export function Dashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("ALL");
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
+  const loadTasks = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const data = await fetchPendingTasks();
       setTasks(data);
     } catch {
       // API not available
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadTasks();
-    const interval = setInterval(loadTasks, 1500);
+    loadTasks(true); // Initial load shows spinner
+    const interval = setInterval(() => loadTasks(false), 1500); // subsequent polls do not
     return () => clearInterval(interval);
   }, [loadTasks]);
 
@@ -71,7 +71,7 @@ export function Dashboard() {
             Open Live Demo
           </a>
           <button
-            onClick={loadTasks}
+            onClick={() => loadTasks(true)}
             disabled={isLoading}
             className="btn-secondary flex items-center gap-1.5"
           >

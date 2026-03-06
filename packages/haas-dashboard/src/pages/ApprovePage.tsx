@@ -82,22 +82,34 @@ export function ApprovePage() {
     skillsMatch: boolean;
   } | null>(null);
 
-  // Load task
-  const loadTask = useCallback(async () => {
+  // Load task with retries
+  const loadTask = useCallback(async (retryCount = 0) => {
     if (!requestId) return;
     try {
       const res = await fetch(`/pending`);
       const data = await res.json();
       const found = (data.pending ?? []).find((t: PendingTask) => t.request.id === requestId);
-      if (found) setTask(found);
-      else setError('Request not found or already resolved');
+      
+      if (found) {
+        setTask(found);
+        setError(null);
+      } else if (retryCount < 5) {
+        // If not found, wait 1s and try again (up to 5x) to handle propagation delay
+        setTimeout(() => loadTask(retryCount + 1), 1000);
+      } else {
+        setError('Request not found or already resolved');
+      }
     } catch {
-      setError('Unable to connect to HaaS Core');
+      if (retryCount < 5) {
+        setTimeout(() => loadTask(retryCount + 1), 1000);
+      } else {
+        setError('Unable to connect to HaaS Core');
+      }
     }
   }, [requestId]);
 
   useEffect(() => {
-    loadTask();
+    loadTask(); // Start loading
     fetchEnabledProviders().then(setEnabledProviders).catch(() => {});
   }, [loadTask]);
 
